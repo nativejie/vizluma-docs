@@ -1,6 +1,8 @@
 """Exercise the published examples against a local fixture, never the live API."""
 
 import base64
+from email import policy
+from email.parser import BytesParser
 import json
 import os
 from pathlib import Path
@@ -25,7 +27,20 @@ class ExampleServer(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        raw = self.rfile.read(int(self.headers["Content-Length"]))
+        if self.headers["Content-Type"].startswith("multipart/form-data"):
+            message = BytesParser(policy=policy.default).parsebytes(
+                ("Content-Type: " + self.headers["Content-Type"] + "\r\n\r\n").encode() + raw
+            )
+            body = {}
+            for part in message.iter_parts():
+                name = part.get_param("name", header="content-disposition")
+                body[name] = (
+                    {"filename": part.get_filename(), "type": part.get_content_type(), "bytes": part.get_payload(decode=True)}
+                    if part.get_filename() else part.get_payload(decode=True).decode("utf-8")
+                )
+        else:
+            body = json.loads(raw)
         self.server.requests.append((self.path, self.headers, body))
         status = self.server.response_status
         payload = (
@@ -60,6 +75,8 @@ class DocumentationExamples(unittest.TestCase):
             ("guides/client-examples.mdx", "generate.py"),
             ("guides/client-examples.mdx", "generate.mjs"),
             ("guides/image-results.mdx", "save_images.py"),
+            ("api-reference/images-edits.mdx", "edit-upload.sh"),
+            ("api-reference/images-edits.mdx", "edit-url.sh"),
         ):
             source = (ROOT / page).read_text()
             match = re.search(r"^```\w+ " + re.escape(title) + r"\n(.*?)^```", source, re.M | re.S)
@@ -90,10 +107,14 @@ class DocumentationExamples(unittest.TestCase):
         self.env = os.environ | {
             "VIZLUMA_API_KEY": "fixture-key-not-a-real-credential",
             "VIZLUMA_BASE_URL": self.base + "/v1/",
+            "REFERENCE_IMAGE_URL": self.base + '/image.png?label="cat"&x=1',
         }
+        (Path(self.work.name) / "input.png").write_bytes(PNG)
 
     def run_example(self, script, *args):
-        runtime = "node" if script.endswith(".mjs") else sys.executable
+        runtime = "bash" if script.endswith(".sh") else "node" if script.endswith(".mjs") else sys.executable
+        if script.endswith(".sh"):
+            self.env["VIZLUMA_BASE_URL"] = self.base + "/v1"
         return subprocess.run(
             [runtime, str(self.scripts / script), *args],
             cwd=self.work.name, env=self.env, capture_output=True, text=True, timeout=15,
@@ -119,6 +140,30 @@ class DocumentationExamples(unittest.TestCase):
                     self.assertEqual(payload["data"][0]["url"], self.server.image_url)
                     self.assertNotIn(self.env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
         self.assertEqual(len(self.server.requests), 6)
+
+    def test_edit_examples_send_reference_url_or_png_file(self):
+        for script in ("edit-url.sh", "edit-upload.sh"):
+            with self.subTest(script=script):
+                result = self.run_example(script)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                path, headers, body = self.server.requests[-1]
+                self.assertEqual(path, "/v1/images/edits")
+                self.assertEqual(headers["Authorization"], "Bearer fixture-key-not-a-real-credential")
+                self.assertEqual(body["model"], "gpt-image-2")
+                self.assertEqual(body["size"], "1024x1024")
+                self.assertEqual(body["response_format"], "url")
+                self.assertEqual(body["prompt"], "为参考图中的橘猫添加一条红色针织围巾，保持同一只猫、姿态和纯白背景，无文字")
+                if script == "edit-upload.sh":
+                    self.assertEqual(body["n"], "1")
+                    self.assertEqual(body["image"], {"filename": "input.png", "type": "image/png", "bytes": PNG})
+                    self.assertTrue(headers["Content-Type"].startswith("multipart/form-data; boundary="))
+                else:
+                    self.assertEqual(body["n"], 1)
+                    self.assertEqual(body["images"], [{"image_url": self.env["REFERENCE_IMAGE_URL"]}])
+                payload = json.loads((Path(self.work.name) / "edit.json").read_text())
+                self.assertEqual(payload["data"][0]["url"], self.server.image_url)
+                self.assertNotIn(self.env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
+        self.assertEqual(len(self.server.requests), 2)
 
     def test_clients_do_not_retry_auth_errors_or_save_them_as_results(self):
         self.server.response_status = 401

@@ -1,32 +1,88 @@
 ---
-title: "图片编辑（联调中）"
-description: "编辑能力的验证状态及当前不应依赖的功能边界。"
+title: "图片编辑"
+description: "通过图片链接或文件上传，使用参考图与提示词完成图片编辑。"
 ---
-
-<Warning>
-  图片编辑尚未完成当前部署下的端到端验收，**不作为本版文档已验证的生产接入能力**。请先联系对接人员确认模型、输入格式、输出规格和计费，再进行联调。
-</Warning>
-
-规划中的对接路径为：
 
 ```text
 POST https://api.vizluma.online/v1/images/edits
 ```
 
-网关已有 JSON／文件上传形式的编辑接入实现，但“路由存在”不等于实际模型服务的行为已经验证。本页暂不提供可直接复制到生产的编辑请求示例。
+使用企业已有的 API Key，无需自助注册。编辑是同步接口：提交参考图及修改要求，等待最终图片返回。
 
-## 验收后补充的内容
+## 已验证范围
 
-- 支持的模型及参考图片数量。
-- JSON 图片链接与 multipart 文件上传示例。
-- 输入文件格式、体积与尺寸限制。
-- 请求尺寸、输出尺寸及其价格档位。
-- 生成失败、部分返回及超时的处理方式。
+2026-10-30 已完成以下真实调用，并核对返回图片、实际尺寸与计费：
 
-## 当前边界
+| 模型 | JSON 图片链接 | multipart 上传 | 已验证输出 |
+| --- | --- | --- | --- |
+| `gpt-image-2` | 通过 | 通过 | 单张 1024×1024；文件上传另通过 2048×2048 |
+| `gpt-image-2.5-flare` | 通过 | 通过 | 单张 1024×1024 |
+| `gpt-image-2.5-sunburst` | 通过 | 通过 | 单张 1024×1024 |
 
-- 不承诺 `mask` 局部编辑；当前网关会拒绝该参数。
-- 不承诺透明背景或所有官方编辑参数。
-- 不要因为文生图调用成功，就认为编辑调用同样可用。
+本轮使用一张橘猫参考图，要求保持主体和姿态、添加红色围巾；三个模型均得到对应修改。以上不是批量、多参考图、所有尺寸或所有参数的完整验收。
 
-可以先完成 [文生图接入](/api-reference/images-generations)。编辑联调完成后，本页会补充经过实际调用验证的示例，而不是直接照搬其他服务商的教程。
+## 方式一：上传文件
+
+把自己的 PNG 参考图保存为当前目录的 `input.png`。密钥应通过服务端环境变量注入，见 [鉴权](/getting-started/authentication)。
+
+```bash edit-upload.sh
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}/images/edits" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}" \
+  -F 'model=gpt-image-2' \
+  -F 'prompt=为参考图中的橘猫添加一条红色针织围巾，保持同一只猫、姿态和纯白背景，无文字' \
+  -F 'size=1024x1024' \
+  -F 'n=1' \
+  -F 'response_format=url' \
+  -F 'image=@input.png;type=image/png' \
+  -o edit.json
+```
+
+<Note>
+  **不要手动设置 multipart 的 Content-Type。** curl 会自动生成正确的 boundary。客户端 SDK 同样应使用其文件／FormData 能力，不要将整张图片手工拼入 JSON。
+</Note>
+
+切换 2.5 模型时，只需将 `model` 改成完整的 `gpt-image-2.5-flare` 或 `gpt-image-2.5-sunburst`。
+
+## 方式二：使用图片链接
+
+`REFERENCE_IMAGE_URL` 必须是接口服务可以直接下载的 HTTPS 图片地址，不应依赖浏览器登录或 Cookie。不能公开访问的图片优先使用文件上传方式。
+
+```bash edit-url.sh
+: "${REFERENCE_IMAGE_URL:?请先设置参考图片的 HTTPS 地址}"
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}/images/edits" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}" \
+  -H 'Content-Type: application/json' \
+  --data-binary "$(python3 - <<'PY'
+import json, os
+print(json.dumps({
+    "model": "gpt-image-2",
+    "prompt": "为参考图中的橘猫添加一条红色针织围巾，保持同一只猫、姿态和纯白背景，无文字",
+    "images": [{"image_url": os.environ["REFERENCE_IMAGE_URL"]}],
+    "size": "1024x1024", "n": 1, "response_format": "url"
+}))
+PY
+)" \
+  -o edit.json
+```
+
+本例用 Python 生成 JSON，避免直接插入带引号或特殊字符的 URL 导致 JSON 格式错误。
+
+## 响应与计费
+
+`gpt-image-2` 单张 1K 的 JSON 链接编辑另已验证 `response_format=b64_json`：返回可解码的 PNG，且不附带上游 URL；两个 2.5 模型未逐一复测 Base64。
+
+成功响应为 `created` 和 `data` 数组；URL 模式下通过 `data[0].url` 获取图片，保存方式见 [图片结果](/guides/image-results)。请确认 HTTP 成功且存在图片字段，不要把错误响应当作生成结果。
+
+编辑沿用对应模型的按张、按输出尺寸档位计费，价格见 [计费说明](/pricing)。`gpt-image-2` 的 `2048x2048` 上传编辑已核对实际输出为 2048×2048，按 2K 档计费；不能由此推断其他模型／尺寸均已验证，也不表示原生生成或未经过超分。
+
+## 输入限制与边界
+
+- 建议先使用一张 PNG 参考图、`n=1`、`1024x1024`。其他输入格式需单独联调。
+- 网关最多接受 15 张参考图；每个上传文件不超过 20 MiB；`n` 为 1～10 的整数。这些是校验上限，不是多图／批量效果承诺。
+- 不要在同一请求混合上传文件和图片链接。JSON 中的大体积 Base64／data URL 未作为本版已验证方式，请改用文件上传。
+- 不支持 `mask` 局部蒙版编辑；不能保证背景、透明度等所有扩展参数的行为。
+- 耗时受输入和输出规格影响。超时后不要立即重复提交，先按 [超时与重试](/guides/timeouts-and-retries) 核对，避免重复生成与计费。
