@@ -13,7 +13,7 @@ import ImageParameters from "/snippets/image-parameters.mdx";
 | 接口 | `POST /v1/images/generations` |
 | API Base URL | `https://api.vizluma.online/v1` |
 | 调用形式 | 同步等待图片结果 |
-| 计费方式 | 按张、按分辨率档位，见 [价格表](/pricing) |
+| 计费方式 | 统一 $0.20／张，1K／2K／4K 同价，见 [价格表](/pricing) |
 
 使用已有企业 API Key，无需注册。首次调用前请完成 [环境变量配置](/getting-started/authentication)。
 
@@ -45,5 +45,5 @@ curl --fail-with-body --silent --show-error \
 
 - 单张 `1024x1024`、URL 模式已完成真实调用和图片下载验证。
 - 这是按张计费的接入方式，不需要按输入／输出 token 自行估算当前生图费用。
-- 高分辨率及批量调用应先进行小规模联调，不要把价格档位视为能力验收结果。
+- 高分辨率及批量调用应先进行小规模联调，不要把已公布规格视为能力验收结果。
 - 已验证图片链接和文件上传编辑，含单张 1K 及文件上传 2K，见 [图片编辑](/api-reference/images-edits)。
