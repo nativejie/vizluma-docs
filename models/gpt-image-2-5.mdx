@@ -1,0 +1,74 @@
+---
+title: "GPT Image 2.5"
+description: "接入 Flare 与 Sunburst：模型 ID、调用示例及切换注意事项。"
+---
+
+import ImageParameters from "/snippets/image-parameters.mdx";
+
+## 模型 ID
+
+| 模型 | 请求中的 `model` |
+| --- | --- |
+| Flare | `gpt-image-2.5-flare` |
+| Sunburst | `gpt-image-2.5-sunburst` |
+
+不要简写为 `gpt-image-2.5`。两个完整 ID 均已完成单张 `1024x1024`、URL 返回与图片下载联调；调用权限仍以你的企业账号配置为准。
+
+## 调用示例
+
+先完成 [环境变量配置](/getting-started/authentication)，再选择一个模型：
+
+<CodeGroup>
+
+```bash Flare
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "$VIZLUMA_BASE_URL/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-2.5-flare",
+    "prompt": "生成一张白色陶瓷杯的商品插画，杯子居中，纯白背景，柔和阴影，无文字",
+    "size": "1024x1024",
+    "n": 1,
+    "response_format": "url"
+  }' \
+  -o generation.json
+```
+
+```bash Sunburst
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "$VIZLUMA_BASE_URL/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "生成一张白色陶瓷杯的商品插画，杯子居中，纯白背景，柔和阴影，无文字",
+    "size": "1024x1024",
+    "n": 1,
+    "response_format": "url"
+  }' \
+  -o generation.json
+```
+
+</CodeGroup>
+
+响应结构与 GPT Image 2 相同，见 [图片生成 API](/api-reference/images-generations)。返回 URL 后请及时保存图片。
+
+## 参数
+
+<ImageParameters />
+
+## 从 GPT Image 2 切换
+
+1. 请管理员确认当前 Key 已开通目标 2.5 模型。
+2. 在现有请求中替换完整 `model` ID。
+3. 保留已经验证的 `size`、`n` 和 `response_format`。
+4. 使用真实业务提示词复测效果、耗时和费用。
+
+两个 2.5 模型的公开基础价一致，但与 GPT Image 2 不同，见 [计费说明](/pricing)。不要仅根据型号数字判断效果，也不要把某一张样图的风格当作模型的固定行为。
+
+<Note>
+  尚未完成本轮验证的编辑、批量、高分辨率和扩展参数，不因更换为 2.5 模型自动视为已验证。
+</Note>

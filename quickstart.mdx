@@ -1,0 +1,69 @@
+---
+title: "快速开始"
+description: "用一条 cURL 请求生成图片，并保存接口响应。"
+---
+
+## 准备工作
+
+你需要一个已由管理员开通的企业账号及可用的 API Key。未开通请先查看 [企业开通](/getting-started/enterprise-access)，本服务不开放自助注册。
+
+在你的服务端或本地安全终端配置：
+
+```bash
+export VIZLUMA_API_KEY="YOUR_API_KEY"
+export VIZLUMA_BASE_URL="https://api.vizluma.online/v1"
+```
+
+这里的 Key 只是占位符，生产环境请通过密钥管理系统注入。
+
+## 生成第一张图片
+
+```bash
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "$VIZLUMA_BASE_URL/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-2",
+    "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+    "size": "1024x1024",
+    "n": 1,
+    "response_format": "url"
+  }' \
+  -o generation.json
+```
+
+请求在图片完成后返回 JSON，不需要客户端提交任务后再轮询。生成可能需要几十秒或更长时间；示例设置 600 秒等待上限，**不代表每次耗时保证**。
+
+## 查看响应
+
+成功响应包含 `data` 数组，每个有效条目对应一张图片。以下是结构示意，`IMAGE_OBJECT.png` 不是可下载的实际文件：
+
+```json
+{
+  "created": 1793289600,
+  "data": [
+    {
+      "url": "https://static.vizluma.online/new-api/images/IMAGE_OBJECT.png"
+    }
+  ]
+}
+```
+
+不要把 `generation.json` 当作图片文件。读取 `data[].url` 下载图片，或使用 [图片结果与保存](/guides/image-results) 中的脚本。
+
+## 改用 GPT Image 2.5
+
+保持同一接口，将请求中的 `model` 替换为以下任意一个即可，前提是当前 Key 已开通对应模型权限：
+
+```text
+gpt-image-2.5-flare
+gpt-image-2.5-sunburst
+```
+
+不同模型单价不同，见 [计费说明](/pricing)。更多可运行示例见 [Python 与 Node.js](/guides/client-examples)。
+
+<Warning>
+  请求超时、断连或没有收到响应，不一定代表生成未执行。先核对调用记录并联系对接人员，不要立即循环重发。
+</Warning>

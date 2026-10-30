@@ -1,0 +1,49 @@
+---
+title: "GPT Image 2"
+description: "使用 gpt-image-2 生成图片：请求参数、调用示例与结果处理。"
+---
+
+import ImageParameters from "/snippets/image-parameters.mdx";
+
+## 接口与模型
+
+| 项目 | 值 |
+| --- | --- |
+| 模型 ID | `gpt-image-2` |
+| 接口 | `POST /v1/images/generations` |
+| API Base URL | `https://api.vizluma.online/v1` |
+| 调用形式 | 同步等待图片结果 |
+| 计费方式 | 按张、按分辨率档位，见 [价格表](/pricing) |
+
+使用已有企业 API Key，无需注册。首次调用前请完成 [环境变量配置](/getting-started/authentication)。
+
+## 生成图片
+
+```bash
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "$VIZLUMA_BASE_URL/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-2",
+    "prompt": "生成一张白色陶瓷杯的商品插画，杯子居中，纯白背景，柔和阴影，无文字",
+    "size": "1024x1024",
+    "n": 1,
+    "response_format": "url"
+  }' \
+  -o generation.json
+```
+
+读取 `generation.json` 中的 `data[].url` 获取图片。Python、Node.js 和保存脚本分别见 [客户端示例](/guides/client-examples) 与 [图片结果](/guides/image-results)。
+
+## 参数
+
+<ImageParameters />
+
+## 已验证范围与注意事项
+
+- 单张 `1024x1024`、URL 模式已完成真实调用和图片下载验证。
+- 这是按张计费的接入方式，不需要按输入／输出 token 自行估算当前生图费用。
+- 高分辨率及批量调用应先进行小规模联调，不要把价格档位视为能力验收结果。
+- 编辑能力尚未完成本轮端到端验证，见 [图片编辑状态](/api-reference/images-edits)。

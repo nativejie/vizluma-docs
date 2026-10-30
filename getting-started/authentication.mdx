@@ -1,0 +1,51 @@
+---
+title: "鉴权与地址"
+description: "在服务端使用 Bearer API Key 调用接口。"
+---
+
+## API 地址
+
+```text
+https://api.vizluma.online/v1
+```
+
+生成图片的完整地址为：
+
+```text
+POST https://api.vizluma.online/v1/images/generations
+```
+
+如果客户端已将 Base URL 设置为包含 `/v1`，路径只需追加 `/images/generations`，不要产生 `/v1/v1/`。
+
+## 请求头
+
+```http
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+- `YOUR_API_KEY` 是占位符，请在你自己的服务端替换。
+- 使用 HTTPS，保持证书校验开启；不要使用 `curl -k`。
+- 不要将 API Key 放进 URL、查询参数、提示词或图片文件名。
+- 接口调用使用 API Key，不依赖控制台浏览器登录态或 Cookie。
+
+## 环境变量
+
+以下是示意配置，**不要把真实密钥写入代码仓库或公开文档**：
+
+```bash
+export VIZLUMA_API_KEY="YOUR_API_KEY"
+export VIZLUMA_BASE_URL="https://api.vizluma.online/v1"
+```
+
+生产环境应通过部署平台或密钥管理系统注入。手工联调时，也应避免把真实密钥留在共享终端、Shell 历史和录屏中。
+
+<Warning>
+  不要在网页前端、公开在线编辑器或第三方文档调试器中粘贴生产 API Key。由你的业务后端调用 Vizluma API，再把业务结果返回前端。
+</Warning>
+
+## 密钥失效或泄露
+
+联系管理员禁用受影响的 Key 并更换凭证，同时核对调用记录。排障材料仅保留模型名、时间、HTTP 状态和请求 ID，不要发送完整 Key、密码、Cookie 或完整鉴权请求头。
+
+收到 `401` 时先检查是否漏传 `Bearer`、Key 是否复制完整、是否过期或已被禁用；不要对相同凭证不断重试。其他问题见 [错误处理](/api-reference/errors)。

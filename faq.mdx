@@ -1,0 +1,46 @@
+---
+title: "常见问题"
+description: "关于企业开通、模型、结果保存、计费和生产接入的常见疑问。"
+---
+
+<AccordionGroup>
+  <Accordion title="在哪里注册？">
+    本服务不开放自助注册。请联系已有商务或管理员完成企业开通，获取可用 API Key 后按 [快速开始](/quickstart) 对接。
+  </Accordion>
+  <Accordion title="模型调用应该使用哪个域名？">
+    API Base URL 为 `https://api.vizluma.online/v1`。`sub.vizluma.online` 用于企业控制台，`docs.vizluma.online` 用于文档，不是模型调用地址。
+  </Accordion>
+  <Accordion title="可以把 API Key 放在网页里直接调用吗？">
+    不要这样做。浏览器中的 Key 可以被用户或脚本读取，请由你的业务后端调用，密钥只保存在服务端。
+  </Accordion>
+  <Accordion title="为什么模型存在，但我的 Key 调用失败？">
+    模型列表不等于账号授权列表。请核对完整模型 ID、Key 的有效性、模型权限与可用额度，并向管理员提供脱敏后的错误和请求 ID。
+  </Accordion>
+  <Accordion title="GPT Image 2.5 的 model 应该怎么写？">
+    使用 `gpt-image-2.5-flare` 或 `gpt-image-2.5-sunburst`，不要简写为 `gpt-image-2.5`。详见 [2.5 接入教程](/models/gpt-image-2-5)。
+  </Accordion>
+  <Accordion title="为什么相同提示词生成的图片差别很大？">
+    生图具有随机性，宽泛的风格描述也可能产生不同解释。请明确主体、构图、画风、颜色与文字要求。不同模型的单张输出不能直接作为固定风格或质量排名的依据。
+  </Accordion>
+  <Accordion title="是否支持 4K？能保证原生 4K 吗？">
+    网关已有高分辨率尺寸和价格档位配置，但本轮仅完成三个模型的单张 1024×1024 联调。高分辨率需单独验收；本文不承诺未经验证的原生 4K，也不能仅凭图片尺寸判断是否经过超分。
+  </Accordion>
+  <Accordion title="图片一定是 PNG 吗？">
+    本轮基础测试返回了 PNG，但生产代码不应只根据 URL 后缀判断。请识别下载内容，并按 [保存脚本](/guides/image-results) 处理实际格式。
+  </Accordion>
+  <Accordion title="返回的图片链接能永久保存吗？">
+    不作永久有效或永久保管承诺。请及时下载到企业自己的存储中，并按业务需求管理访问权限。
+  </Accordion>
+  <Accordion title="需要自己轮询图片任务吗？">
+    当前图片生成接口同步等待结果，不需要客户端轮询。等待超时不保证任务已经停止，应先核对调用记录。
+  </Accordion>
+  <Accordion title="超时后可以立即重新请求吗？">
+    不建议。生成可能已经提交并继续完成，立即重发可能重复生成和产生费用。参见 [超时与重试](/guides/timeouts-and-retries)。
+  </Accordion>
+  <Accordion title="可以不限并发调用吗？">
+    当前不作不限并发或不限速承诺。请先确认企业调用限制，并在业务端使用有界队列。单次图片数量与同时请求数量是两个不同概念。
+  </Accordion>
+  <Accordion title="图片编辑、文本和视频模型什么时候能用？">
+    请以正式开通清单为准。图片编辑还需单独联调，文本和视频模型会在开放并验证后补充教程，不因文档预留分类而自动可用。
+  </Accordion>
+</AccordionGroup>

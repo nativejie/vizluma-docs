@@ -1,0 +1,8 @@
+node_modules/
+.mintlify/
+.env*
+*.log
+generation.json
+image-*.png
+image-*.jpg
+image-*.webp

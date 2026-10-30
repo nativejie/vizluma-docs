@@ -1,0 +1,9 @@
+node_modules/
+.mintlify/
+package.json
+bun.lock
+.gitignore
+.env*
+*.log
+bun.lockb
+scripts/

@@ -1,0 +1,87 @@
+---
+title: "图片结果与保存"
+description: "处理 URL 或 Base64 响应，并按实际图片格式保存文件。"
+---
+
+## URL 与 Base64
+
+| `response_format` | 图片内容 | 使用方式 |
+| --- | --- | --- |
+| `url` | `data[].url` | 从链接下载原始文件 |
+| `b64_json` | `data[].b64_json` | 解码 Base64 后保存文件 |
+
+推荐先使用已完成三个模型联调的 `url` 模式。网关实现了 Base64 返回方式，但本轮尚未对三个模型逐一复测，不将其视作与 URL 相同的完整验证范围。
+
+<Note>
+  请以实际响应中的有效字段为准，避免只处理数组第一项或只假设一种图片格式。若图片内联或转存失败，响应可能保留原始图片链接；不要依赖链接的域名、路径结构或永久有效性。
+</Note>
+
+## 保存脚本
+
+将以下代码保存为 `save_images.py`。脚本仅使用 Python 标准库，支持 PNG、JPEG 与 WebP；会优先解码 `b64_json`，否则下载 `url`。下载图片时**不携带你的 API Key**。
+
+```python save_images.py
+import base64
+import json
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+if len(sys.argv) != 2:
+    raise SystemExit("用法：python3 save_images.py generation.json")
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if payload.get("error"):
+    raise SystemExit("响应包含错误，请先排查 API 调用")
+items = payload.get("data")
+if not isinstance(items, list) or not items:
+    raise SystemExit("响应中没有图片结果")
+
+for index, item in enumerate(items, start=1):
+    if item.get("b64_json"):
+        encoded = item["b64_json"]
+        if encoded.startswith("data:"):
+            encoded = encoded.split(",", 1)[1]
+        encoded = "".join(encoded.split())
+        encoded += "=" * (-len(encoded) % 4)
+        raw = base64.b64decode(encoded, validate=True)
+    elif item.get("url"):
+        url = item["url"]
+        if urllib.parse.urlsplit(url).scheme not in ("https", "http"):
+            raise SystemExit("拒绝非 HTTP(S) 图片地址")
+        with urllib.request.urlopen(url, timeout=60) as download:
+            raw = download.read()
+    else:
+        raise SystemExit(f"第 {index} 项没有图片内容或地址")
+
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        extension = "png"
+    elif raw.startswith(b"\xff\xd8\xff"):
+        extension = "jpg"
+    elif raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        extension = "webp"
+    else:
+        raise SystemExit(f"第 {index} 项不是可识别的 PNG/JPEG/WebP 图片")
+
+    output = Path(f"image-{index}.{extension}")
+    if output.exists():
+        raise SystemExit(f"{output} 已存在，请更换工作目录或先备份文件")
+    output.write_bytes(raw)
+    print(f"已保存 {output}（{len(raw)} bytes）")
+```
+
+执行：
+
+```bash
+python3 save_images.py generation.json
+```
+
+脚本按文件头选择扩展名，并保留原始字节，不会重新编码、放大或锐化图片。它不替代图像解码器的完整校验；生产系统还应限制下载大小、校验文件并管理存储权限。
+
+## 存储与使用
+
+- 收到结果后及时保存到企业自己的存储，不把返回链接当作永久素材库。
+- 不要将含敏感内容的图片链接或 Base64 内容写入公共日志。
+- 图片链接不应被视为登录凭证，但可能被任何持有链接的人访问；涉及敏感素材时请按企业要求保存和控制分发。
+- 不要根据文件扩展名推断实际图片格式，也不要把 JSON 错误响应存成 `.png`。

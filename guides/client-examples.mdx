@@ -1,0 +1,140 @@
+---
+title: "Python 与 Node.js"
+description: "使用标准库或原生 fetch 调用生图接口，不依赖额外 SDK。"
+---
+
+以下示例适合运行在你的业务后端，均不会自动重试生图请求。你需要先配置 [API Key 和 Base URL](/getting-started/authentication)。
+
+```bash
+export VIZLUMA_API_KEY="YOUR_API_KEY"
+export VIZLUMA_BASE_URL="https://api.vizluma.online/v1"
+export VIZLUMA_MODEL="gpt-image-2"
+```
+
+`VIZLUMA_MODEL` 可替换为已开通的 `gpt-image-2.5-flare` 或 `gpt-image-2.5-sunburst`。
+
+## Python
+
+Python 3.10 或更高版本，仅使用标准库。保存为 `generate.py`：
+
+```python generate.py
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+api_key = os.environ.get("VIZLUMA_API_KEY")
+if not api_key or api_key == "YOUR_API_KEY":
+    raise SystemExit("请先配置服务端环境变量 VIZLUMA_API_KEY")
+
+base_url = os.environ.get(
+    "VIZLUMA_BASE_URL", "https://api.vizluma.online/v1"
+).rstrip("/")
+body = {
+    "model": os.environ.get("VIZLUMA_MODEL", "gpt-image-2"),
+    "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+    "size": "1024x1024",
+    "n": 1,
+    "response_format": "url",
+}
+request = urllib.request.Request(
+    f"{base_url}/images/generations",
+    data=json.dumps(body).encode("utf-8"),
+    headers={
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    },
+    method="POST",
+)
+
+try:
+    with urllib.request.urlopen(request, timeout=600) as response:
+        result = json.load(response)
+except urllib.error.HTTPError as error:
+    print(f"HTTP {error.code}", file=sys.stderr)
+    print(error.read().decode("utf-8", errors="replace"), file=sys.stderr)
+    raise SystemExit(1)
+except (urllib.error.URLError, TimeoutError) as error:
+    print(f"请求未取得可确认的结果：{error}", file=sys.stderr)
+    print("请核对调用记录，不要立即自动重发。", file=sys.stderr)
+    raise SystemExit(1)
+
+if result.get("error") or not result.get("data"):
+    raise SystemExit("未收到有效图片结果，请核对调用记录")
+
+Path("generation.json").write_text(
+    json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+)
+print("响应已保存至 generation.json，请继续下载 data 中的图片。")
+```
+
+执行：
+
+```bash
+python3 generate.py
+```
+
+## Node.js
+
+Node.js 20 或更高版本，使用原生 `fetch`。保存为 `generate.mjs`：
+
+```javascript generate.mjs
+import { writeFile } from "node:fs/promises";
+
+const apiKey = process.env.VIZLUMA_API_KEY;
+if (!apiKey || apiKey === "YOUR_API_KEY") {
+  throw new Error("请先配置服务端环境变量 VIZLUMA_API_KEY");
+}
+
+const baseUrl = (
+  process.env.VIZLUMA_BASE_URL ?? "https://api.vizluma.online/v1"
+).replace(/\/+$/, "");
+
+try {
+  const response = await fetch(`${baseUrl}/images/generations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.VIZLUMA_MODEL ?? "gpt-image-2",
+      prompt: "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+      size: "1024x1024",
+      n: 1,
+      response_format: "url",
+    }),
+    signal: AbortSignal.timeout(600_000),
+  });
+
+  if (!response.ok) {
+    console.error(`HTTP ${response.status}: ${await response.text()}`);
+    process.exitCode = 1;
+  } else {
+    const result = await response.json();
+    if (result.error || !Array.isArray(result.data) || !result.data.length) {
+      throw new Error("未收到有效图片结果，请核对调用记录");
+    }
+    await writeFile("generation.json", JSON.stringify(result, null, 2));
+    console.log("响应已保存至 generation.json，请继续下载 data 中的图片。");
+  }
+} catch (error) {
+  console.error(error.message);
+  console.error("未取得可确认的结果时，请核对调用记录，不要立即自动重发。");
+  process.exitCode = 1;
+}
+```
+
+执行：
+
+```bash
+node generate.mjs
+```
+
+## 继续处理图片
+
+这两个程序保存的是接口响应，不是图片本身。接着使用 [图片保存脚本](/guides/image-results) 下载 URL 或解码 Base64。
+
+如果你的项目已经使用其他 HTTP 客户端或兼容 Images API 的 SDK，请确认它支持自定义 Base URL、足够长的超时，并关闭创建图片请求的默认自动重试。不要直接套用 SDK 的全部可选参数，支持范围以本文档为准。

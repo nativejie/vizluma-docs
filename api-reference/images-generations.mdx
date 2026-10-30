@@ -1,0 +1,75 @@
+---
+title: "生成图片"
+description: "同步生成图片，返回 URL 或 Base64 图片结果。"
+api: "POST /v1/images/generations"
+playground: "none"
+---
+
+import ImageParameters from "/snippets/image-parameters.mdx";
+
+## 请求
+
+使用 HTTPS 和 JSON 请求体：
+
+```http
+POST https://api.vizluma.online/v1/images/generations
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+<ImageParameters />
+
+## 请求示例
+
+```bash
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "$VIZLUMA_BASE_URL/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-2",
+    "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+    "size": "1024x1024",
+    "n": 1,
+    "response_format": "url"
+  }' \
+  -o generation.json
+```
+
+环境变量设置见 [鉴权与地址](/getting-started/authentication)。
+
+## 成功响应
+
+HTTP `200`，以下链接为结构占位，不是实际图片：
+
+```json
+{
+  "created": 1793289600,
+  "data": [
+    {
+      "url": "https://static.vizluma.online/new-api/images/IMAGE_OBJECT.png"
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `created` | integer | 结果／任务创建时间，Unix 秒时间戳；不表示生成结束时间 |
+| `data` | array | 图片结果列表，遍历每个有效条目 |
+| `data[].url` | string | 图片下载链接；使用实际返回值，不拼接固定域名和路径 |
+| `data[].b64_json` | string | Base64 图片内容，返回此形式时解码保存 |
+
+`b64_json` 是可选返回方式：将请求的 `response_format` 改为 `b64_json`。服务端实现和响应回退说明见 [图片结果与保存](/guides/image-results)。生产接入不应假设响应总有 `usage`、任务 ID 或 `revised_prompt`。
+
+## 执行与结果
+
+- 一次请求同步等待图片完成，不需要调用方轮询任务接口。
+- 不支持客户端要求 SSE 流式生图。
+- `n` 大于 1 时需遍历返回数组，不要假设只读取第一项即可。
+- 请求超时或断连时结果可能尚不确定，先核对记录，见 [重试说明](/guides/timeouts-and-retries)。
+
+## 错误响应
+
+错误使用非 `2xx` HTTP 状态码。错误消息可能包含请求 ID；不要依赖固定中文或英文字符串判断错误。完整分类见 [错误处理](/api-reference/errors)。

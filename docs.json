@@ -1,0 +1,63 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Vizluma API",
+  "description": "面向企业开发者的 Vizluma API 对接文档：接入指南、图像模型、API 参考与计费说明。",
+  "colors": {
+    "primary": "#4F46E5",
+    "light": "#818CF8",
+    "dark": "#6366F1"
+  },
+  "navbar": {
+    "links": [
+      { "label": "企业控制台", "href": "https://sub.vizluma.online" }
+    ]
+  },
+  "api": {
+    "mdx": { "server": "https://api.vizluma.online" },
+    "playground": { "display": "none" }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "接入指南",
+        "groups": [
+          {
+            "group": "开始接入",
+            "pages": ["index", "getting-started/enterprise-access", "quickstart", "getting-started/authentication"]
+          },
+          {
+            "group": "图像接入实践",
+            "pages": ["guides/client-examples", "guides/image-results", "guides/sizes-and-quality", "guides/timeouts-and-retries"]
+          },
+          {
+            "group": "费用与支持",
+            "pages": ["pricing", "faq"]
+          }
+        ]
+      },
+      {
+        "tab": "模型",
+        "groups": [
+          {
+            "group": "图像模型",
+            "pages": ["models/overview", "models/gpt-image-2", "models/gpt-image-2-5"]
+          }
+        ]
+      },
+      {
+        "tab": "API 参考",
+        "groups": [
+          {
+            "group": "图像接口",
+            "pages": ["api-reference/images-generations", "api-reference/images-edits"]
+          },
+          {
+            "group": "接口约定",
+            "pages": ["api-reference/errors"]
+          }
+        ]
+      }
+    ]
+  }
+}

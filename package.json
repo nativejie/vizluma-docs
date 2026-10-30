@@ -1,0 +1,14 @@
+{
+  "name": "vizluma-api-docs",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "mint dev --no-open",
+    "validate": "mint validate",
+    "check:links": "mint broken-links --check-snippets",
+    "check:examples": "python3 scripts/check-examples.py"
+  },
+  "devDependencies": {
+    "mint": "4.2.1166"
+  }
+}
