@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Vizluma API",
-  "description": "面向企业开发者的 Vizluma API 对接文档：接入指南、图像模型、API 参考与计费说明。",
+  "description": "面向企业开发者的 Vizluma API 对接文档：文本与图像模型、API 参考与计费说明。",
   "colors": {
     "primary": "#4F46E5",
     "light": "#818CF8",
@@ -40,8 +40,12 @@
         "tab": "模型",
         "groups": [
           {
+            "group": "模型目录与文本接入",
+            "pages": ["models/overview"]
+          },
+          {
             "group": "图像模型",
-            "pages": ["models/overview", "models/gpt-image-2", "models/gpt-image-2-5"]
+            "pages": ["models/gpt-image-2", "models/gpt-image-2-5"]
           }
         ]
       },

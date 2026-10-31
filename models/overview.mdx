@@ -1,6 +1,6 @@
 ---
 title: "模型列表"
-description: "当前生图模型及其已验证的接入范围。"
+description: "当前文本与生图模型，以及各自的接入方式和验证范围。"
 ---
 
 ## 图像模型
@@ -19,7 +19,7 @@ description: "当前生图模型及其已验证的接入范围。"
 
 ## 统一调用方式
 
-三个模型使用同一接口：
+以上三个图像模型使用同一接口：
 
 ```text
 POST https://api.vizluma.online/v1/images/generations
@@ -32,6 +32,44 @@ POST https://api.vizluma.online/v1/images/generations
 先用你自己的代表性业务提示词，比较指令遵循、文字准确率、生成耗时与成本。同一提示词会存在随机差异，单张样例不能用来证明固定画风或判断模型优劣。
 
 这些名称是 Vizluma API 的调用标识。本文不以模型名称、输出尺寸或单张样图证明底层模型身份，也不承诺未经验证的原生高分辨率能力。
+
+## GPT-6.1 Sol 文本接入
+
+模型 ID 为 `gpt-6.1-sol`，使用同一企业 API Key 和 Base URL。支持 Chat Completions 与 Responses 的基础文本请求及 SSE 流式返回。普通输入 **$5**、输出 **$10**、缓存命中输入 **$0.25／百万 Token**，VIP 八折；完整规则见 [计费说明](/pricing)。
+
+### Chat Completions
+
+先在自己的服务端设置 `VIZLUMA_API_KEY`。示例默认请求 API 域名，也允许通过 `VIZLUMA_BASE_URL` 指定含 `/v1` 的地址：
+
+```bash chat.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"Reply with exactly OK."}],"reasoning_effort":"low","max_completion_tokens":128,"stream":false}'
+```
+
+读取 `choices[0].message.content`，用量见 `usage`。需要流式时，将 `stream` 设为 `true`，增加 `"stream_options":{"include_usage":true}`，并给 curl 加 `--no-buffer`；逐条读取 SSE 的 `data:`，以 `[DONE]` 结束。不要将整个 SSE 当成单个 JSON。
+
+### Responses
+
+```bash responses.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${BASE_URL%/}/responses" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-sol","input":"Reply with exactly OK.","reasoning":{"effort":"low"},"max_output_tokens":128,"store":false,"stream":false}'
+```
+
+非流式响应从 `output` 中读取 `type=message` 的 `content`，提取 `type=output_text` 的 `text`。需要流式时设 `stream:true` 并使用 `--no-buffer`，处理 `response.output_text.delta`，检查最终 `response.completed` 及其 `usage`；同时处理错误或不完整状态，不要把连接断开当成成功完成。
+
+输出上限也包含推理用量。示例只用于最小联调，复杂任务请按业务需要设置合理上限。基础文本联调不代表工具调用、结构化输出、文件、多模态、长上下文或 WebSocket 均已验收；这些能力请先与对接人员确认。`gpt-6.1-terra` 当前未开放。
 
 ## 后续模型
 

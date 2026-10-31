@@ -77,6 +77,8 @@ class DocumentationExamples(unittest.TestCase):
             ("guides/image-results.mdx", "save_images.py"),
             ("api-reference/images-edits.mdx", "edit-upload.sh"),
             ("api-reference/images-edits.mdx", "edit-url.sh"),
+            ("models/overview.mdx", "chat.sh"),
+            ("models/overview.mdx", "responses.sh"),
         ):
             source = (ROOT / page).read_text()
             match = re.search(r"^```\w+ " + re.escape(title) + r"\n(.*?)^```", source, re.M | re.S)
@@ -162,6 +164,29 @@ class DocumentationExamples(unittest.TestCase):
                     self.assertEqual(body["images"], [{"image_url": self.env["REFERENCE_IMAGE_URL"]}])
                 payload = json.loads((Path(self.work.name) / "edit.json").read_text())
                 self.assertEqual(payload["data"][0]["url"], self.server.image_url)
+                self.assertNotIn(self.env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
+        self.assertEqual(len(self.server.requests), 2)
+
+    def test_text_examples_send_expected_contract(self):
+        expected = {
+            "chat.sh": ("/v1/chat/completions", {
+                "model": "gpt-6.1-sol", "messages": [{"role": "user", "content": "Reply with exactly OK."}],
+                "reasoning_effort": "low", "max_completion_tokens": 128, "stream": False,
+            }),
+            "responses.sh": ("/v1/responses", {
+                "model": "gpt-6.1-sol", "input": "Reply with exactly OK.",
+                "reasoning": {"effort": "low"}, "max_output_tokens": 128, "store": False, "stream": False,
+            }),
+        }
+        for script, (expected_path, expected_body) in expected.items():
+            with self.subTest(script=script):
+                result = self.run_example(script)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                path, headers, body = self.server.requests[-1]
+                self.assertEqual(path, expected_path)
+                self.assertEqual(body, expected_body)
+                self.assertEqual(headers["Authorization"], "Bearer " + self.env["VIZLUMA_API_KEY"])
+                self.assertEqual(headers["Content-Type"], "application/json")
                 self.assertNotIn(self.env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
         self.assertEqual(len(self.server.requests), 2)
 
