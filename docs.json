@@ -3,6 +3,12 @@
   "theme": "mint",
   "name": "Vizluma API",
   "description": "面向企业开发者的 Vizluma API 对接文档：文本与图像模型、API 参考与计费说明。",
+  "logo": {
+    "light": "/images/vizluma-symbol-v1.png",
+    "dark": "/images/vizluma-symbol-v1.png",
+    "href": "/"
+  },
+  "favicon": "/images/vizluma-symbol-v1.png",
   "colors": {
     "primary": "#4F46E5",
     "light": "#818CF8",
