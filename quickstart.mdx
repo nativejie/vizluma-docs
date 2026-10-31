@@ -1,6 +1,6 @@
 ---
 title: "快速开始"
-description: "用一条 cURL 请求生成图片，并保存接口响应。"
+description: "选择文本或图片接入路径，使用已有企业 API Key 完成第一条请求。"
 ---
 
 ## 准备工作
@@ -15,6 +15,17 @@ export VIZLUMA_BASE_URL="https://api.vizluma.online/v1"
 ```
 
 这里的 Key 只是占位符，生产环境请通过密钥管理系统注入。
+
+## 选择接入方式
+
+<CardGroup cols={2}>
+  <Card title="文本对话" icon="comment" href="/models/overview">
+    使用 GPT-6.1 Sol 的 Chat Completions／Responses 示例，按 Token 计费，支持 SSE。
+  </Card>
+  <Card title="图片生成与编辑" icon="image" href="/api-reference/images-generations">
+    继续使用下方单张生图示例，或查看图片接口参数，按实际图片数计费。
+  </Card>
+</CardGroup>
 
 ## 生成第一张图片
 
@@ -62,7 +73,7 @@ gpt-image-2.5-flare
 gpt-image-2.5-sunburst
 ```
 
-不同模型单价不同，见 [计费说明](/pricing)。更多可运行示例见 [Python 与 Node.js](/guides/client-examples)。
+当前三个图像模型的 1K／2K／4K 基础价统一为每张 0.20 美元，VIP 为每张 0.16 美元；文本价格另计，见 [计费说明](/pricing)。更多图片调用示例见 [Python 与 Node.js](/guides/client-examples)。
 
 <Warning>
   请求超时、断连或没有收到响应，不一定代表生成未执行。先核对调用记录并联系对接人员，不要立即循环重发。

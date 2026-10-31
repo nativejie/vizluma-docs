@@ -19,6 +19,12 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
   <Accordion title="GPT Image 2.5 的 model 应该怎么写？">
     使用 `gpt-image-2.5-flare` 或 `gpt-image-2.5-sunburst`，不要简写为 `gpt-image-2.5`。详见 [2.5 接入教程](/models/gpt-image-2-5)。
   </Accordion>
+  <Accordion title="GPT-6.1 Sol 怎么调用？">
+    模型 ID 为 `gpt-6.1-sol`，使用同一 API Base URL 和企业 API Key，通过 `/chat/completions` 或 `/responses` 调用，支持基础文本和 SSE 流式返回。请求参数与示例见 [文本接入](/models/overview)。`gpt-6.1-terra` 当前未开放。
+  </Accordion>
+  <Accordion title="文本模型如何收费？为什么不能只按回复字数估算？">
+    GPT-6.1 Sol 每百万 Token 普通输入 5 美元、输出 10 美元、缓存命中输入 0.25 美元，VIP 八折。缓存部分不会重复收普通输入费。上游用量可能包含系统上下文与推理 Token，不能只按可见文本字数估算；以最终消费记录为准，详见 [计费说明](/pricing)。
+  </Accordion>
   <Accordion title="为什么相同提示词生成的图片差别很大？">
     生图具有随机性，宽泛的风格描述也可能产生不同解释。请明确主体、构图、画风、颜色与文字要求。不同模型的单张输出不能直接作为固定风格或质量排名的依据。
   </Accordion>
@@ -40,7 +46,7 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
   <Accordion title="可以不限并发调用吗？">
     当前不作不限并发或不限速承诺。请先确认企业调用限制，并在业务端使用有界队列。单次图片数量与同时请求数量是两个不同概念。
   </Accordion>
-  <Accordion title="图片编辑、文本和视频模型什么时候能用？">
-    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本和视频模型会在开放并验证后补充教程，不因文档预留分类而自动可用。
+  <Accordion title="图片编辑、文本和视频模型目前支持哪些？">
+    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本已开放 `gpt-6.1-sol` 的基础 Chat Completions／Responses 及 SSE，详见 [文本接入](/models/overview)。未列出的视频、其他文本模型或扩展能力仍需另行确认，不因文档预留分类而自动可用。
   </Accordion>
 </AccordionGroup>
