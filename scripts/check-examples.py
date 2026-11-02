@@ -43,11 +43,15 @@ class ExampleServer(BaseHTTPRequestHandler):
             body = json.loads(raw)
         self.server.requests.append((self.path, self.headers, body))
         status = self.server.response_status
-        payload = (
-            {"created": 1793289600, "data": [{"url": self.server.image_url}]}
-            if status == 200
-            else {"error": {"message": "fixture unauthorized", "code": ""}}
-        )
+        if status == 200 and self.path == "/v1/videos":
+            payload = {"id": "video_fixture", "object": "video", "status": "queued"}
+            status = 202
+        else:
+            payload = (
+                {"created": 1793289600, "data": [{"url": self.server.image_url}]}
+                if status == 200
+                else {"error": {"message": "fixture unauthorized", "code": ""}}
+            )
         encoded = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -56,6 +60,16 @@ class ExampleServer(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def do_GET(self):
+        if self.path.startswith("/v1/videos/"):
+            self.server.video_requests.append((self.path, self.headers.get("Authorization")))
+            content = self.path.endswith("/content")
+            payload = b"fixture-mp4-not-real-media" if content else json.dumps({"id": "video_fixture", "status": "completed", "duration": 5}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4" if content else "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            return
         self.server.download_auth.append(self.headers.get("Authorization"))
         self.send_response(200)
         self.send_header("Content-Type", "image/png")
@@ -79,6 +93,9 @@ class DocumentationExamples(unittest.TestCase):
             ("api-reference/images-edits.mdx", "edit-url.sh"),
             ("models/overview.mdx", "chat.sh"),
             ("models/overview.mdx", "responses.sh"),
+            ("models/overview.mdx", "video-create.sh"),
+            ("models/overview.mdx", "video-status.sh"),
+            ("models/overview.mdx", "video-download.sh"),
         ):
             source = (ROOT / page).read_text()
             match = re.search(r"^```\w+ " + re.escape(title) + r"\n(.*?)^```", source, re.M | re.S)
@@ -90,6 +107,7 @@ class DocumentationExamples(unittest.TestCase):
         cls.server.image_url = cls.base + "/image.png"
         cls.server.requests = []
         cls.server.download_auth = []
+        cls.server.video_requests = []
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
 
@@ -103,6 +121,7 @@ class DocumentationExamples(unittest.TestCase):
     def setUp(self):
         self.server.requests.clear()
         self.server.download_auth.clear()
+        self.server.video_requests.clear()
         self.server.response_status = 200
         self.work = tempfile.TemporaryDirectory(prefix="vizluma-doc-output-")
         self.addCleanup(self.work.cleanup)
@@ -189,6 +208,33 @@ class DocumentationExamples(unittest.TestCase):
                 self.assertEqual(headers["Content-Type"], "application/json")
                 self.assertNotIn(self.env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
         self.assertEqual(len(self.server.requests), 2)
+
+    def test_video_examples_create_once_then_query_and_download(self):
+        created = self.run_example("video-create.sh")
+        self.assertEqual(created.returncode, 0, created.stderr)
+        task = json.loads((Path(self.work.name) / "video-task.json").read_text())
+        self.env["VIDEO_ID"] = task["id"]
+        path, headers, body = self.server.requests[-1]
+        self.assertEqual(path, "/v1/videos")
+        self.assertEqual(body, {
+            "model": "seedance-2.5-480p",
+            "prompt": "A cat walking slowly on a sunny beach, gentle waves in the background",
+            "duration": 5, "ratio": "16:9", "resolution": "480p",
+        })
+        self.assertEqual(headers["Authorization"], "Bearer fixture-key-not-a-real-credential")
+        status = self.run_example("video-status.sh")
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertEqual(json.loads(status.stdout)["status"], "completed")
+        downloaded = self.run_example("video-download.sh")
+        self.assertEqual(downloaded.returncode, 0, downloaded.stderr)
+        self.assertEqual((Path(self.work.name) / "video.mp4").read_bytes(), b"fixture-mp4-not-real-media")
+        self.assertEqual(self.server.video_requests, [
+            ("/v1/videos/video_fixture", "Bearer fixture-key-not-a-real-credential"),
+            ("/v1/videos/video_fixture/content", "Bearer fixture-key-not-a-real-credential"),
+        ])
+        self.assertEqual(len(self.server.requests), 1, "polling and download must not create more videos")
+        for result in (created, status, downloaded):
+            self.assertNotIn(self.env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
 
     def test_clients_do_not_retry_auth_errors_or_save_them_as_results(self):
         self.server.response_status = 401

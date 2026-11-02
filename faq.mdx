@@ -46,7 +46,10 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
   <Accordion title="可以不限并发调用吗？">
     当前不作不限并发或不限速承诺。请先确认企业调用限制，并在业务端使用有界队列。单次图片数量与同时请求数量是两个不同概念。
   </Accordion>
+  <Accordion title="Seedance 视频怎么生成、如何计费？">
+    已配置六个按秒模型：Seedance 2.0 的720P／1080P／4K，以及2.5的480P／720P／1080P。通过 `POST /v1/videos` 创建、`GET /v1/videos/{id}` 查询、完成后 `GET /v1/videos/{id}/content` 下载。普通单价分别为每秒1／2.2／4.4元及0.8／1.4／3.8元，VIP八折。配置和本地测试已完成，尚未进行付费生成及下载实测，参见 [视频接入](/models/overview#seedance-视频接入) 和 [价格表](/pricing)。
+  </Accordion>
   <Accordion title="图片编辑、文本和视频模型目前支持哪些？">
-    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本已开放 `gpt-6.1-sol` 的基础 Chat Completions／Responses 及 SSE，详见 [文本接入](/models/overview)。未列出的视频、其他文本模型或扩展能力仍需另行确认，不因文档预留分类而自动可用。
+    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本已开放 `gpt-6.1-sol` 的基础 Chat Completions／Responses 及 SSE，详见 [文本接入](/models/overview)。视频模型及验收边界见 [Seedance 视频接入](/models/overview#seedance-视频接入)。未列出的模型或扩展能力仍需另行确认，不因文档预留分类而自动可用。
   </Accordion>
 </AccordionGroup>
