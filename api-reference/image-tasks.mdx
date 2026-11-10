@@ -1,0 +1,152 @@
+---
+title: "异步生图与任务查询"
+description: "提交后取得任务 ID，查询图片结果，并通过幂等键避免重复提交。"
+playground: "none"
+---
+
+图片生成和编辑默认仍同步等待结果。需要后台生成时，在原有请求中增加
+`Prefer: respond-async`，或使用 `?async=true`，不需要更换模型或请求体格式。
+以下示例使用企业已有的 API Key，地址配置见 [鉴权与地址](/getting-started/authentication)。
+
+## 1. 提交并保存任务 ID
+
+每次新业务生成设置一个新的 `IDEMPOTENCY_KEY`；同一次业务的网络重试必须沿用原键和原请求内容。
+下面的键是占位值，请替换为你自己的业务请求编号。
+
+```bash async-create.sh
+export IDEMPOTENCY_KEY="your-unique-business-request-id"
+
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 60 \
+  "${VIZLUMA_BASE_URL%/}/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: respond-async" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -d '{
+    "model": "gpt-image-2",
+    "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+    "size": "1024x1024",
+    "n": 1,
+    "response_format": "url"
+  }' \
+  -D image-task.headers -o image-task.json
+```
+
+接受任务返回 HTTP `202`，不是已经出图或免于后续校验失败的保证。任务可能已开始或完成，
+请以响应实际 `status` 为准。以下均为结构占位：
+
+```json
+{
+  "id": "img_example",
+  "object": "image.task",
+  "model": "gpt-image-2",
+  "status": "QUEUED",
+  "created_at": 1794300000
+}
+```
+
+响应头包含：
+
+```http
+Location: /v1/images/tasks/img_example
+X-Image-Task-Id: img_example
+Preference-Applied: respond-async
+Cache-Control: private, no-store
+```
+
+**立即保存 `id`、幂等键和原始请求。** `Location` 是同一 API 域名下的相对路径。
+编辑图片时，对 [图片编辑](/api-reference/images-edits) 的 JSON 或 multipart 请求增加相同请求头即可。
+不要把 `Prefer`、`Idempotency-Key` 写进 JSON 请求体，也不要手动拼 multipart boundary。
+
+## 2. 查询任务
+
+将任务 ID 替换为提交时保存的实际值。查询使用 API Key，不使用官网登录凭据。
+
+```bash async-status.sh
+TASK_ID="img_example"
+
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 60 \
+  "${VIZLUMA_BASE_URL%/}/images/tasks/$TASK_ID" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -o image-task-status.json
+```
+
+建议每 5～10 秒查询一次，并设置业务自己的总等待上限；这不是生成耗时或 SLA 承诺。
+查询 HTTP `200` 仅表示查询成功，不代表生成成功。
+
+| `status` | 含义与处理 |
+| --- | --- |
+| `QUEUED` | 已排队，继续查询 |
+| `IN_PROGRESS` | 正在处理，继续查询 |
+| `SUCCESS` | 已完成，从 `result` 读取图片响应 |
+| `FAILURE` | 已确认失败，查看 `response_code` 和 `result.error`；修正原因后再决定是否创建新业务请求 |
+| `UNKNOWN` | 结果待确认，不能当作失败；继续核对任务和调用记录，不要换新幂等键自动重发 |
+
+`UNKNOWN` 在可恢复任务取得确定结果后可能更新为 `SUCCESS` 或 `FAILURE`，也可能保持待确认；
+不保证服务重启后所有上游都能恢复查询，更不保证会自动重新生成。
+
+## 3. 保存图片结果
+
+成功时的 `result` 是原有图片响应，不是另一个视频式下载接口：
+
+```json
+{
+  "id": "img_example",
+  "object": "image.task",
+  "model": "gpt-image-2",
+  "status": "SUCCESS",
+  "created_at": 1794300000,
+  "finished_at": 1794300035,
+  "response_code": 200,
+  "result": {
+    "created": 1794300000,
+    "data": [
+      { "url": "https://static.vizluma.online/new-api/images/IMAGE_OBJECT.png" }
+    ]
+  }
+}
+```
+
+- 遍历 `result.data`，按实际返回的 `url` 下载，或解码 `b64_json`。
+- 请求 `response_format=b64_json` 时，Base64 同样位于 `result.data`。
+- 下载图片不要携带 API Key；不要假设图片 URL 永久有效或固定使用某个域名。
+- 及时保存图片和必要任务信息，参见 [图片结果与保存](/guides/image-results)。
+
+## 幂等、断连与重试
+
+`Idempotency-Key` 最长 128 字节，不能包含回车或换行。去重范围是**同一账户**，
+不是每枚 API Key 单独计数；推荐同一次业务始终使用原 API Key。
+
+| 情况 | 行为 |
+| --- | --- |
+| 相同键、相同请求内容 | 复用同一任务，不因这次客户端重发另建生成任务 |
+| 相同键、不同请求内容或接口 | HTTP `409`，错误码 `idempotency_conflict`；原任务不被替换 |
+| 不提供键 | 服务端为每次提交生成新键，客户端再次提交不能依赖自动去重 |
+| 没有收到任务 ID | 如需重试原提交，沿用原键及原请求；不要生成新键盲目重发 |
+
+JSON 字段顺序或 multipart boundary 的变化不应让同一内容变成新业务；
+改变模型、提示词、参数、文件或生成／编辑接口则不是同一请求。
+同步请求也可以设置幂等键，收到任务响应头后可使用任务接口查询；同步与异步返回结构不能混用。
+
+幂等是防重复提交机制，不是无限期存储、上游恰好执行一次、免计费或重复请求重新出图的承诺。
+如原任务已失败或待确认，复用原键不会自动开始另一轮生成。
+异步模式不改变已有模型价格和账户分组规则，失败或待确认请求的最终费用以调用记录核对为准。
+
+## 查看本账户任务列表
+
+```bash async-list.sh
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 60 \
+  "${VIZLUMA_BASE_URL%/}/images/tasks?p=1&page_size=20" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -o image-task-list.json
+```
+
+返回顶层 `object: "list"`、`data` 数组和 `total`，不是 `data.items`。
+列表以任务摘要为主，获取完整 `result` 请查询单个任务。只可查询本账户任务，
+其他账户或不存在的 ID 返回 `404`；缺失或无效 API Key 不能访问。
+
+本接口不用于文本 SSE 或视频任务。不要将 `stream=true` 和异步选项一起使用；
+任务接口也不能补回尚未保存的历史图片。视频使用独立的 `/v1/videos` 协议，状态名和结果结构不同。

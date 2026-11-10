@@ -7,7 +7,7 @@ description: "通过图片链接或文件上传，使用参考图与提示词完
 POST https://api.vizluma.online/v1/images/edits
 ```
 
-使用企业已有的 API Key，无需自助注册。编辑是同步接口：提交参考图及修改要求，等待最终图片返回。
+使用企业已有的 API Key，无需自助注册。编辑默认同步等待最终图片；也可增加 `Prefer: respond-async` 和 `Idempotency-Key`，取得任务 ID 后查询结果。JSON 与 multipart 上传均沿用原参数，参见 [异步生图与任务查询](/api-reference/image-tasks)。
 
 ## 已验证范围
 

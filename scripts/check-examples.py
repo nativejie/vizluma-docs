@@ -43,7 +43,10 @@ class ExampleServer(BaseHTTPRequestHandler):
             body = json.loads(raw)
         self.server.requests.append((self.path, self.headers, body))
         status = self.server.response_status
-        if status == 200 and self.path == "/v1/videos":
+        if status == 200 and self.headers.get("Prefer") == "respond-async":
+            payload = {"id": "img_example", "object": "image.task", "status": "QUEUED"}
+            status = 202
+        elif status == 200 and self.path == "/v1/videos":
             payload = {"id": "video_fixture", "object": "video", "status": "queued"}
             status = 202
         else:
@@ -60,6 +63,18 @@ class ExampleServer(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def do_GET(self):
+        if self.path.startswith("/v1/images/tasks"):
+            self.server.image_task_queries.append((self.path, self.headers.get("Authorization")))
+            task = {"id": "img_example", "object": "image.task", "status": "SUCCESS",
+                    "response_code": 200, "result": {"data": [{"url": self.server.image_url}]}}
+            body = {"object": "list", "data": [task], "total": 1} if "?" in self.path else task
+            payload = json.dumps(body).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            return
         if self.path.startswith("/v1/videos/"):
             self.server.video_requests.append((self.path, self.headers.get("Authorization")))
             content = self.path.endswith("/content")
@@ -96,6 +111,9 @@ class DocumentationExamples(unittest.TestCase):
             ("models/overview.mdx", "video-create.sh"),
             ("models/overview.mdx", "video-status.sh"),
             ("models/overview.mdx", "video-download.sh"),
+            ("api-reference/image-tasks.mdx", "async-create.sh"),
+            ("api-reference/image-tasks.mdx", "async-status.sh"),
+            ("api-reference/image-tasks.mdx", "async-list.sh"),
         ):
             source = (ROOT / page).read_text()
             match = re.search(r"^```\w+ " + re.escape(title) + r"\n(.*?)^```", source, re.M | re.S)
@@ -108,6 +126,7 @@ class DocumentationExamples(unittest.TestCase):
         cls.server.requests = []
         cls.server.download_auth = []
         cls.server.video_requests = []
+        cls.server.image_task_queries = []
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
 
@@ -122,6 +141,7 @@ class DocumentationExamples(unittest.TestCase):
         self.server.requests.clear()
         self.server.download_auth.clear()
         self.server.video_requests.clear()
+        self.server.image_task_queries.clear()
         self.server.response_status = 200
         self.work = tempfile.TemporaryDirectory(prefix="vizluma-doc-output-")
         self.addCleanup(self.work.cleanup)
@@ -246,6 +266,27 @@ class DocumentationExamples(unittest.TestCase):
                 self.assertFalse((Path(self.work.name) / "generation.json").exists())
                 self.assertNotIn(self.env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
         self.assertEqual(len(self.server.requests), 2)
+
+    def test_async_image_submission_query_and_list_examples(self):
+        for script in ("async-create.sh", "async-status.sh", "async-list.sh"):
+            result = self.run_example(script)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(self.server.requests), 1)
+        path, headers, body = self.server.requests[0]
+        self.assertEqual(path, "/v1/images/generations")
+        self.assertEqual(headers["Prefer"], "respond-async")
+        self.assertEqual(headers["Idempotency-Key"], "your-unique-business-request-id")
+        self.assertEqual(headers["Authorization"], "Bearer " + self.env["VIZLUMA_API_KEY"])
+        self.assertEqual(body["n"], 1)
+        self.assertEqual(body["model"], "gpt-image-2")
+        self.assertEqual(json.loads((Path(self.work.name) / "image-task.json").read_text())["status"], "QUEUED")
+        detail = json.loads((Path(self.work.name) / "image-task-status.json").read_text())
+        self.assertEqual(detail["result"]["data"][0]["url"], self.server.image_url)
+        listing = json.loads((Path(self.work.name) / "image-task-list.json").read_text())
+        self.assertEqual(listing["total"], 1)
+        self.assertEqual([query[0] for query in self.server.image_task_queries], [
+            "/v1/images/tasks/img_example", "/v1/images/tasks?p=1&page_size=20"])
+        self.assertTrue(all(auth == "Bearer " + self.env["VIZLUMA_API_KEY"] for _, auth in self.server.image_task_queries))
 
     def test_placeholder_key_fails_without_sending_a_request(self):
         self.env["VIZLUMA_API_KEY"] = "YOUR_API_KEY"

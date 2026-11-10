@@ -38,7 +38,7 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
     不作永久有效或永久保管承诺。请及时下载到企业自己的存储中，并按业务需求管理访问权限。
   </Accordion>
   <Accordion title="需要自己轮询图片任务吗？">
-    当前图片生成接口同步等待结果，不需要客户端轮询。等待超时不保证任务已经停止，应先核对调用记录。
+    默认同步调用不需要轮询；增加 `Prefer: respond-async` 或 `?async=true` 后返回 HTTP `202` 和任务 ID，再通过 `GET /v1/images/tasks/{id}` 查询。生成与编辑都建议设置 `Idempotency-Key`，等待超时或 `UNKNOWN` 不代表任务已停止。详见 [异步生图与任务查询](/api-reference/image-tasks)。
   </Accordion>
   <Accordion title="超时后可以立即重新请求吗？">
     不建议。生成可能已经提交并继续完成，立即重发可能重复生成和产生费用。参见 [超时与重试](/guides/timeouts-and-retries)。

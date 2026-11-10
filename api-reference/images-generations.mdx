@@ -1,6 +1,6 @@
 ---
 title: "生成图片"
-description: "同步生成图片，返回 URL 或 Base64 图片结果。"
+description: "默认同步生成图片，也可异步提交后查询任务结果。"
 api: "POST /v1/images/generations"
 playground: "none"
 ---
@@ -65,7 +65,9 @@ HTTP `200`，以下链接为结构占位，不是实际图片：
 
 ## 执行与结果
 
-- 一次请求同步等待图片完成，不需要调用方轮询任务接口。
+- 默认同步等待图片完成，HTTP `200` 返回原有图片结果。
+- 需要异步时增加 `Prefer: respond-async`（或 `?async=true`），HTTP `202` 返回任务 ID；使用 [异步生图与任务查询](/api-reference/image-tasks) 获取结果。
+- 建议生成和编辑都设置 `Idempotency-Key`；同一业务重试必须保留原键和请求内容，不要让 SDK 自动换键重复提交。
 - 不支持客户端要求 SSE 流式生图。
 - `n` 大于 1 时需遍历返回数组，不要假设只读取第一项即可。
 - 请求超时或断连时结果可能尚不确定，先核对记录，见 [重试说明](/guides/timeouts-and-retries)。

@@ -60,7 +60,7 @@
         "groups": [
           {
             "group": "图像接口",
-            "pages": ["api-reference/images-generations", "api-reference/images-edits"]
+            "pages": ["api-reference/images-generations", "api-reference/images-edits", "api-reference/image-tasks"]
           },
           {
             "group": "接口约定",
