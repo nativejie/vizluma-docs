@@ -61,7 +61,7 @@ HTTP `200`，以下链接为结构占位，不是实际图片：
 | `data[].url` | string | 图片下载链接；使用实际返回值，不拼接固定域名和路径 |
 | `data[].b64_json` | string | Base64 图片内容，返回此形式时解码保存 |
 
-`b64_json` 是可选返回方式：将请求的 `response_format` 改为 `b64_json`。服务端实现和响应回退说明见 [图片结果与保存](/guides/image-results)。生产接入不应假设响应总有 `usage`、任务 ID 或 `revised_prompt`。
+`b64_json` 是可选返回方式：将请求的 `response_format` 改为 `b64_json`。服务端实现和响应回退说明见 [图片结果与保存](/guides/image-results)。同步响应体不应假设总有 `usage`、任务 ID 或 `revised_prompt`；异步响应的任务 ID 见下文。
 
 ## 执行与结果
 
