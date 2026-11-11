@@ -1,0 +1,110 @@
+---
+title: "异步生图完整示例"
+description: "创建一次、保存任务 ID、轮询结果，并在中断后继续查询。"
+---
+
+适合网页生成按钮、批量工作流或容易断网的客户端。由业务后端提交图片任务，将任务 ID 绑定业务记录，再把进度显示给前端。完整协议见 [异步 API](/api-reference/image-tasks)。
+
+## 准备
+
+配置 [API 环境变量](/getting-started/authentication)，为每次新业务指定一个唯一编号。**同一业务的重试必须使用原编号与原请求内容**。
+
+```bash
+export IDEMPOTENCY_KEY="your-unique-business-request-id"
+```
+
+下列 Python 3.10+ 示例只使用标准库。首次提交后保存 `image-task.json`；最终图片响应保存到 `image-result.json`。脚本不会自动重新创建任务，也不自动重试失败的查询。
+
+```python async-image.py
+import json
+import os
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+api_key = os.environ.get("VIZLUMA_API_KEY")
+if not api_key or api_key == "YOUR_API_KEY":
+    raise SystemExit("请先配置 VIZLUMA_API_KEY")
+base = os.environ.get("VIZLUMA_BASE_URL", "https://api.vizluma.online/v1").rstrip("/")
+task_id = os.environ.get("IMAGE_TASK_ID", "").strip()
+
+
+def call_api(path, body=None, headers=None):
+    request_headers = {"Authorization": f"Bearer {api_key}"}
+    request_headers.update(headers or {})
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        request_headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(base + path, data=data, headers=request_headers)
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        raise SystemExit(f"HTTP {error.code}；保留原任务与幂等键，核对记录后处理")
+    except (urllib.error.URLError, TimeoutError):
+        raise SystemExit("网络结果不确定；保留原任务与幂等键，不要换键重建")
+
+
+if not task_id:
+    key = os.environ.get("IDEMPOTENCY_KEY", "").strip()
+    if not key or len(key.encode()) > 128 or "\r" in key or "\n" in key:
+        raise SystemExit("请配置不超过 128 字节且不含换行的 IDEMPOTENCY_KEY")
+    task = call_api("/images/generations", {
+        "model": "gpt-image-2",
+        "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+        "size": "1024x1024", "n": 1, "response_format": "url",
+    }, {"Prefer": "respond-async", "Idempotency-Key": key})
+    task_id = task.get("id", "")
+    if not task_id:
+        raise SystemExit("未取得任务 ID；如需重试，请保留原键与原请求")
+    Path("image-task.json").write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
+
+print(f"任务 ID：{task_id}", flush=True)
+deadline = time.monotonic() + 600
+while time.monotonic() < deadline:
+    task = call_api("/images/tasks/" + urllib.parse.quote(task_id, safe=""))
+    Path("image-task-status.json").write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
+    status = task.get("status")
+    if status == "SUCCESS":
+        result = task.get("result", {})
+        if not isinstance(result, dict) or result.get("error") or not result.get("data"):
+            raise SystemExit("任务完成但没有图片结果，请保留 ID 核查")
+        Path("image-result.json").write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
+        print("结果已保存到 image-result.json")
+        break
+    if status in ("FAILURE", "UNKNOWN"):
+        raise SystemExit(f"任务状态 {status}；停止自动处理，保留 ID 核对结果与费用")
+    if status not in ("QUEUED", "IN_PROGRESS"):
+        raise SystemExit(f"未识别任务状态 {status}；保留 ID，不创建新任务")
+    time.sleep(5)
+else:
+    raise SystemExit("本地等待结束，任务可能仍在运行；使用 IMAGE_TASK_ID 继续查询")
+```
+
+## 运行与恢复
+
+```bash
+python3 async-image.py
+```
+
+程序输出 ID 后，将它保存到业务数据库。脚本重启时把实际 ID 配置为 `IMAGE_TASK_ID`，这样只查询、不再次提交：
+
+```bash
+export IMAGE_TASK_ID="img_replace_with_your_actual_id"
+python3 async-image.py
+```
+
+没有收到任务 ID 时，保留原幂等键、原请求内容重新提交才能复用原任务；不要把重新生成的 UUID 当作原键。`UNKNOWN` 需要继续核查，不能当作确认失败。
+
+## 保存图片
+
+从 [图片结果页](/guides/image-results) 取得 `save_images.py`，执行：
+
+```bash
+python3 save_images.py image-result.json
+```
+
+示例本地等待上限为 600 秒，查询间隔 5 秒，不是服务完成时限。线上业务应把等待状态持久化，由自己的后台调度器继续查询，避免依赖单个浏览器连接。

@@ -1,0 +1,96 @@
+---
+title: "OpenAI SDK 接入"
+description: "用 Python 或 Node.js SDK 接入基础文本与同步图像请求。"
+---
+
+已有 OpenAI SDK 项目可以设置自定义 Base URL 与 Vizluma Key。请求格式是否支持，仍取决于模型与接口，而不是 SDK 显示了哪些字段。
+
+## 安装
+
+<CodeGroup>
+```bash Python
+python3 -m pip install openai
+```
+```bash Node.js
+bun add openai
+```
+</CodeGroup>
+
+设置 [环境变量](/getting-started/authentication)，把下面代码保存在服务端项目中。SDK 的参数可能随版本变化，请锁定项目实际验证的依赖版本。
+
+## Python 文本调用
+
+```python sdk-chat.py
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["VIZLUMA_API_KEY"],
+    base_url=os.environ.get("VIZLUMA_BASE_URL", "https://api.vizluma.online/v1").rstrip("/"),
+    timeout=120.0,
+    max_retries=0,
+)
+reply = client.chat.completions.create(
+    model="gpt-6.1-sol",
+    messages=[{"role": "user", "content": "请只回复：连接成功"}],
+    reasoning_effort="low",
+    max_completion_tokens=128,
+)
+print(reply.choices[0].message.content)
+```
+
+## Node.js 文本调用
+
+```javascript sdk-chat.mjs
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.VIZLUMA_API_KEY,
+  baseURL: (process.env.VIZLUMA_BASE_URL ?? "https://api.vizluma.online/v1").replace(/\/+$/, ""),
+  timeout: 120_000,
+  maxRetries: 0,
+});
+const reply = await client.chat.completions.create({
+  model: "gpt-6.1-sol",
+  messages: [{ role: "user", content: "请只回复：连接成功" }],
+  reasoning_effort: "low",
+  max_completion_tokens: 128,
+});
+console.log(reply.choices[0].message.content);
+```
+
+## Python 同步生图
+
+```python sdk-image.py
+import json
+import os
+from pathlib import Path
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["VIZLUMA_API_KEY"],
+    base_url=os.environ.get("VIZLUMA_BASE_URL", "https://api.vizluma.online/v1").rstrip("/"),
+    timeout=600.0,
+    max_retries=0,
+)
+result = client.images.generate(
+    model="gpt-image-2",
+    prompt="白色陶瓷杯，纯白背景，商品插画，无文字",
+    size="1024x1024",
+    n=1,
+    response_format="url",
+)
+Path("generation.json").write_text(
+    json.dumps(result.model_dump(), ensure_ascii=False, indent=2), encoding="utf-8"
+)
+```
+
+接着运行 [图片保存脚本](/guides/image-results)。保存 JSON 不是保存图片本身。
+
+## 重试与扩展接口
+
+本页显式关闭 SDK 自动重试，避免网络错误触发重复创建。图片可用幂等键保护，但文本与视频不应沿用这一保证。
+
+图片异步创建返回任务对象，并不是 SDK `images.generate` 预期的图片对象。推荐用 [异步 HTTP 示例](/guides/async-images) 处理 `202`、幂等键和任务查询；不要把它直接传给同步图片解析器。Gemini 的 `resolution` 等扩展参数也可按模型教程使用原生 HTTP 传入。
+
+SDK 官方使用说明：[Python](https://github.com/openai/openai-python)、[JavaScript / TypeScript](https://github.com/openai/openai-node)。这些链接解释客户端行为，Vizluma 支持范围以本站文档为准。

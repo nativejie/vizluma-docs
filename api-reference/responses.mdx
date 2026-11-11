@@ -1,0 +1,60 @@
+---
+title: "文本生成 · Responses"
+description: "使用 input 创建文本响应，按 output 内容类型读取结果。"
+api: "POST /v1/responses"
+playground: "none"
+---
+
+适用于使用 Responses 请求格式的文本应用。与 Chat Completions 使用同一 API 地址和 Key，但请求、响应及流式事件结构不同。
+
+## 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `model` | string | 是 | `gpt-6.1-sol` |
+| `input` | string | 是 | 本页基础示例的文本输入 |
+| `reasoning.effort` | string | 否 | 示例为 `low`，与 Chat 的 `reasoning_effort` 写法不同 |
+| `max_output_tokens` | integer | 否 | 输出总上限，包含推理用量 |
+| `store` | boolean | 否 | 本页显式使用 `false`；不据此推导整个平台的数据保留政策 |
+| `stream` | boolean | 否 | `false` 返回 JSON，`true` 返回 Responses SSE 事件 |
+
+## cURL
+
+```bash responses.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${BASE_URL%/}/responses" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-sol","input":"Reply with exactly OK.","reasoning":{"effort":"low"},"max_output_tokens":128,"store":false,"stream":false}'
+```
+
+## 成功响应
+
+以下是仅保留基础字段的结构示意：
+
+```json
+{
+  "id": "resp_example",
+  "object": "response",
+  "status": "completed",
+  "output": [{
+    "type": "message",
+    "role": "assistant",
+    "content": [{"type": "output_text", "text": "OK"}]
+  }],
+  "usage": {"input_tokens": 12, "output_tokens": 2, "total_tokens": 14}
+}
+```
+
+遍历 `output` 中 `type=message` 的项，再提取 `content` 中 `type=output_text` 的 `text`。不能假设 `output[0]` 一定是消息；推理等其他类型可能先出现。
+
+原始 HTTP JSON 不应依赖 SDK 便捷属性 `output_text`。SDK 中该属性通常是对消息项的聚合。
+
+## 流式与不完整结果
+
+将 `stream` 改为 `true`，处理 `response.output_text.delta` 并检查 `response.completed`。`response.failed`、`response.incomplete`、错误事件及提前断连均需单独处理，详见 [流式处理](/guides/streaming)。
+
+`previous_response_id`、服务端历史检索、内置工具、文件和 WebSocket 不属于本页已确认的基础文本能力。需要多轮历史时，先按自己的应用与管理员确认支持的输入形式，或使用 [Chat Completions](/api-reference/chat-completions) 的消息列表。

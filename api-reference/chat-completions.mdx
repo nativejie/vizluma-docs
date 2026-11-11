@@ -1,0 +1,82 @@
+---
+title: "文本对话 · Chat Completions"
+description: "发送消息列表，获取完整回复或 SSE 文本流。"
+api: "POST /v1/chat/completions"
+playground: "none"
+---
+
+适用于已有 `messages` 对话历史、聊天机器人和文本生成应用。当前文档示例使用 `gpt-6.1-sol`，模型权限以你的 API Key 为准。
+
+## 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `model` | string | 是 | 完整模型 ID：`gpt-6.1-sol` |
+| `messages` | array | 是 | 消息列表，按对话顺序传入 |
+| `messages[].role` | string | 是 | 基础文本使用 `system`、`user`、`assistant` |
+| `messages[].content` | string | 是 | 对应角色的文本内容 |
+| `max_completion_tokens` | integer | 否 | 输出上限，包含推理用量；示例使用 128，仅用于短回复联调 |
+| `reasoning_effort` | string | 否 | 示例使用 `low`；其他档位按模型确认 |
+| `stream` | boolean | 否 | `false` 返回完整 JSON，`true` 返回 SSE |
+| `stream_options.include_usage` | boolean | 否 | 流式时请求最终用量信息 |
+
+不要同时传入多个不同的输出上限字段。工具、JSON Schema、图片输入等扩展能力需另行确认。
+
+## cURL
+
+先配置 [环境变量](/getting-started/authentication)。
+
+```bash chat.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"Reply with exactly OK."}],"reasoning_effort":"low","max_completion_tokens":128,"stream":false}'
+```
+
+## 成功响应
+
+以下为精简结构示意，ID 和用量是占位值：
+
+```json
+{
+  "id": "chatcmpl_example",
+  "object": "chat.completion",
+  "model": "gpt-6.1-sol",
+  "choices": [{
+    "index": 0,
+    "message": {"role": "assistant", "content": "OK"},
+    "finish_reason": "stop"
+  }],
+  "usage": {"prompt_tokens": 12, "completion_tokens": 2, "total_tokens": 14}
+}
+```
+
+读取 `choices[].message.content`。`finish_reason=length` 表示达到上限，应将结果按可能被截断处理；空内容也不能直接视为完整业务结果。
+
+## 多轮对话
+
+后续请求需要由应用传入所需历史消息。把上轮用户消息和助手回复追加到 `messages`；控制历史长度，避免每轮无限累积。
+
+```json
+{
+  "model": "gpt-6.1-sol",
+  "messages": [
+    {"role": "system", "content": "你是产品客服，回答简洁准确"},
+    {"role": "user", "content": "生成后的图片在哪里下载？"},
+    {"role": "assistant", "content": "从响应中的图片链接下载并及时保存"},
+    {"role": "user", "content": "链接失效了怎么办？"}
+  ],
+  "max_completion_tokens": 512,
+  "stream": false
+}
+```
+
+## 流式与费用
+
+将 `stream` 设为 `true`，流式用量选项设为 `{"include_usage":true}`。逐个读取 `choices[].delta.content`，识别 `[DONE]`，详见 [流式处理](/guides/streaming)。
+
+文本按 Token 结算，推理 Token 和缓存输入说明见 [计费说明](/pricing)。连接中断不能当作“未执行”，也没有图片任务式的续传或幂等承诺。

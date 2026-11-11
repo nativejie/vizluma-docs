@@ -1,0 +1,41 @@
+---
+title: "GPT Image 2.6"
+description: "Flare 与 Sunburst 的调用标识、分辨率分档和接入边界。"
+---
+
+| 型号 | 请求中的 `model` |
+| --- | --- |
+| Flare | `gpt-image-2.6-flare` |
+| Sunburst | `gpt-image-2.6-sunburst` |
+
+使用与 GPT Image 2／2.5 相同的 [生成](/api-reference/images-generations)、[编辑](/api-reference/images-edits) 和 [异步任务](/api-reference/image-tasks) 接口。不能简写为 `gpt-image-2.6`。
+
+## 最小请求
+
+```bash image26.sh
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "${VIZLUMA_BASE_URL%/}/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-image-2.6-flare","prompt":"白色陶瓷杯，纯白背景，商品插画，无文字","size":"1024x1024","n":1,"response_format":"url"}' \
+  -o generation.json
+```
+
+切换 Sunburst 只替换完整模型 ID。请先配置 [环境变量](/getting-started/authentication)。
+
+## 价格和规格
+
+2.6 按规格分档，不能套用 2／2.5 的全档同价：
+
+| 规格 | 普通／张 | VIP／张 |
+| --- | --- | --- |
+| 1K | ¥0.20 | ¥0.16 |
+| 2K | ¥0.30 | ¥0.24 |
+| 4K | ¥0.40 | ¥0.32 |
+
+规格写法见 [尺寸说明](/guides/sizes-and-quality)，最终费用以账户报价和消费记录为准。
+
+## 接入状态
+
+两型号已完成配置与本地请求契约测试；付费生成、编辑效果、实际尺寸与下载仍待实测。正式批量使用前先验证自己的输入输出。当前不承诺 GIF、SVG、透明背景或原生 4K 等扩展能力。

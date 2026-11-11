@@ -1,0 +1,49 @@
+---
+title: "迁移与兼容客户端"
+description: "把已有 OpenAI 格式应用迁移到 Vizluma，并检查参数与任务协议差异。"
+---
+
+迁移通常从请求地址、凭证和模型标识开始，再逐项核对响应处理。不要先批量切换生产流量。
+
+## 配置映射
+
+| 配置项 | Vizluma 配置 |
+| --- | --- |
+| API Base URL | `https://api.vizluma.online/v1` |
+| API Key | 你的 Vizluma API Key |
+| 文本模型 ID | `gpt-6.1-sol` |
+| 图片模型 ID | 从 [模型目录](/models/overview) 复制完整 ID |
+| 文本协议 | Chat Completions 或 Responses，依客户端实际能力选择 |
+| 自动重试 | 首次接入关闭，之后按接口设计策略 |
+
+## SDK 和 HTTP 的区别
+
+- SDK 或客户端要求 **Base URL** 时填写包含 `/v1` 的地址。
+- 客户端要求 **完整端点** 时，Chat 填写 `https://api.vizluma.online/v1/chat/completions`。
+- 如果客户端自动追加 `/v1`，只填写 `https://api.vizluma.online`。最终以实际请求 URL 为准，避免 `/v1/v1`。
+- 某些客户端只支持 Chat，不能因为可以填写模型名，就认为它支持 Responses、图片或视频。
+
+## 从其他聚合 API 迁移
+
+| 项目 | 需要检查的差异 |
+| --- | --- |
+| 图片同步 | Vizluma 默认等待完成，直接返回 `data[]` |
+| 图片异步 | 显式增加 `Prefer: respond-async`；查询 `/v1/images/tasks/{id}` |
+| 图片状态 | `QUEUED`、`IN_PROGRESS`、`SUCCESS`、`FAILURE`、`UNKNOWN` |
+| 视频创建 | `POST /v1/videos`，不是 `/v1/videos/generations` |
+| 视频状态 | `queued`、`in_progress`、`completed`、`failed` |
+| 任务 ID | 必须使用本站返回的 ID，旧平台 ID 不可复用 |
+| VIP | 由账号权限决定，不通过给模型添加 `-vip` 等后缀获得 |
+| 图片规格 | GPT Image 与 Gemini 的 `n`、质量和尺寸限制不同 |
+
+不能把其他平台的模型、价格、任务字段或宽高比参数原样复制后当作兼容完成。
+
+## 建议切换顺序
+
+1. 使用开发 Key 查询 [模型列表](/api-reference/models)。
+2. 用小规模输入验证同步请求及结果保存。
+3. 如使用流式，验证完成、截断、错误与断连分支。
+4. 如使用任务，验证 ID 落库、轮询恢复和重复提交处理。
+5. 在控制台核对用量与费用，再逐步放量。
+
+第三方聊天工具会读取你的 Key、提示词和结果，只在你信任的本地或自建环境配置。前端产品请通过自己的后端访问 Vizluma。接口参数以 [API 总览](/api-reference/overview) 为准。

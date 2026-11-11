@@ -5,7 +5,7 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
 
 <AccordionGroup>
   <Accordion title="在哪里注册？">
-    本服务不开放自助注册。请联系已有商务或管理员完成企业开通，获取可用 API Key 后按 [快速开始](/quickstart) 对接。
+    通过 [官网注册页](https://vizluma.online/sign-up) 注册，已有账号直接登录。企业权限、VIP 和专属报价联系已有对接人员；获取 API Key 后按 [快速开始](/quickstart) 对接。
   </Accordion>
   <Accordion title="模型调用应该使用哪个域名？">
     API Base URL 为 `https://api.vizluma.online/v1`。`sub.vizluma.online` 用于企业控制台，`docs.vizluma.online` 用于文档，不是模型调用地址。
@@ -20,7 +20,7 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
     使用 `gpt-image-2.5-flare` 或 `gpt-image-2.5-sunburst`，不要简写为 `gpt-image-2.5`。详见 [2.5 接入教程](/models/gpt-image-2-5)。
   </Accordion>
   <Accordion title="GPT-6.1 Sol 怎么调用？">
-    模型 ID 为 `gpt-6.1-sol`，使用同一 API Base URL 和企业 API Key，通过 `/chat/completions` 或 `/responses` 调用，支持基础文本和 SSE 流式返回。请求参数与示例见 [文本接入](/models/overview)。`gpt-6.1-terra` 当前未开放。
+    模型 ID 为 `gpt-6.1-sol`，使用同一 API Base URL 和企业 API Key，通过 `/chat/completions` 或 `/responses` 调用，支持基础文本和 SSE 流式返回。请求参数与示例见 [文本接入](/models/gpt-6-1-sol)。`gpt-6.1-terra` 当前未开放。
   </Accordion>
   <Accordion title="文本模型如何收费？为什么不能只按回复字数估算？">
     GPT-6.1 Sol 每百万 Token 普通输入 2 元、输出 10 元、缓存命中输入 0.10 元，VIP 八折。缓存部分不会重复收普通输入费。上游用量可能包含系统上下文与推理 Token，不能只按可见文本字数估算；以最终消费记录为准，详见 [计费说明](/pricing)。
@@ -29,10 +29,10 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
     生图具有随机性，宽泛的风格描述也可能产生不同解释。请明确主体、构图、画风、颜色与文字要求。不同模型的单张输出不能直接作为固定风格或质量排名的依据。
   </Accordion>
   <Accordion title="是否支持 4K？能保证原生 4K 吗？">
-    网关已有高分辨率尺寸配置，现行 1K／2K／4K 基础价统一为 ¥0.20／张，三个模型均完成单张 1024×1024 文生图及编辑联调，GPT Image 2 另通过 2048×2048 文件上传编辑。其他高分辨率需单独验收；本文不承诺未经验证的原生 4K，也不能仅凭图片尺寸判断是否经过超分。
+    网关已有高分辨率尺寸配置，现行 GPT Image 2／2.5 的 1K／2K／4K 基础价为 ¥0.20／张，2.6 和 Gemini 价格见 [计费说明](/pricing)，GPT Image 2／2.5 三个型号均完成单张 1024×1024 文生图及编辑联调，GPT Image 2 另通过 2048×2048 文件上传编辑。其他高分辨率需单独验收；本文不承诺未经验证的原生 4K，也不能仅凭图片尺寸判断是否经过超分。
   </Accordion>
   <Accordion title="图片一定是 PNG 吗？">
-    本轮基础测试返回了 PNG，但生产代码不应只根据 URL 后缀判断。请识别下载内容，并按 [保存脚本](/guides/image-results) 处理实际格式。
+    已验证的基础调用返回了 PNG，但生产代码不应只根据 URL 后缀判断。请识别下载内容，并按 [保存脚本](/guides/image-results) 处理实际格式。
   </Accordion>
   <Accordion title="返回的图片链接能永久保存吗？">
     不作永久有效或永久保管承诺。请及时下载到企业自己的存储中，并按业务需求管理访问权限。
@@ -47,9 +47,15 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
     当前不作不限并发或不限速承诺。请先确认企业调用限制，并在业务端使用有界队列。单次图片数量与同时请求数量是两个不同概念。
   </Accordion>
   <Accordion title="Seedance 视频怎么生成、如何计费？">
-    已配置六个按秒模型：Seedance 2.0 的720P／1080P／4K，以及2.5的480P／720P／1080P。通过 `POST /v1/videos` 创建、`GET /v1/videos/{id}` 查询、完成后 `GET /v1/videos/{id}/content` 下载。普通单价分别为每秒1／2.2／4.4元及0.8／1.4／3.8元，VIP八折。配置和本地测试已完成，尚未进行付费生成及下载实测，参见 [视频接入](/models/overview#seedance-视频接入) 和 [价格表](/pricing)。
+    已配置六个按秒模型：Seedance 2.0 的720P／1080P／4K，以及2.5的480P／720P／1080P。通过 `POST /v1/videos` 创建、`GET /v1/videos/{id}` 查询、完成后 `GET /v1/videos/{id}/content` 下载。普通单价分别为每秒1／2.2／4.4元及0.8／1.4／3.8元，VIP八折。配置和本地测试已完成，尚未进行付费生成及下载实测，参见 [视频 API](/api-reference/videos) 和 [价格表](/pricing)。
   </Accordion>
   <Accordion title="图片编辑、文本和视频模型目前支持哪些？">
-    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本已开放 `gpt-6.1-sol` 的基础 Chat Completions／Responses 及 SSE，详见 [文本接入](/models/overview)。视频模型及验收边界见 [Seedance 视频接入](/models/overview#seedance-视频接入)。未列出的模型或扩展能力仍需另行确认，不因文档预留分类而自动可用。
+    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本已开放 `gpt-6.1-sol` 的基础 Chat Completions／Responses 及 SSE，详见 [文本接入](/models/gpt-6-1-sol)。视频模型及验收边界见 [视频模型](/models/video-models)。未列出的模型或扩展能力仍需另行确认，不因文档预留分类而自动可用。
+  </Accordion>
+  <Accordion title="GPT Image 2.6 和 Gemini 图片也能调用吗？">
+    已配置 2.6 的 Flare／Sunburst 和三个 Gemini 图像型号。2.6 按 1K／2K／4K 分档，Gemini 每次仅允许 n=1。具体价格、参数和实测范围见 [2.6](/models/gpt-image-2-6) 与 [Gemini](/models/gemini-image)。
+  </Accordion>
+  <Accordion title="Wan 视频用哪个接口？">
+    使用 POST /v1/videos 创建，查询和下载路径与 Seedance 相同。支持的三个型号及限制见 [视频模型](/models/video-models)，暂不接受参考视频。付费生成与下载尚待实测。
   </Accordion>
 </AccordionGroup>

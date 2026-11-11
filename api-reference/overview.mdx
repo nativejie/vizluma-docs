@@ -1,0 +1,41 @@
+---
+title: "API 总览"
+description: "按任务选择端点、响应形式和结果读取位置。"
+---
+
+统一 API Base URL 为 `https://api.vizluma.online/v1`。所有下表请求都使用 `Authorization: Bearer YOUR_API_KEY`；JSON 创建请求使用 `Content-Type: application/json`，文件上传由客户端生成 multipart boundary。
+
+## 端点速查
+
+| 操作 | 方法与路径 | 结果位置 |
+| --- | --- | --- |
+| 可用模型 | `GET /v1/models` | `data[].id` |
+| 文本对话 | `POST /v1/chat/completions` | `choices[].message.content` |
+| Responses | `POST /v1/responses` | `output[].content[]` 中的 `output_text` |
+| 生成图片 | `POST /v1/images/generations` | 同步 `data[]`；异步顶层任务 `id` |
+| 编辑图片 | `POST /v1/images/edits` | 与图片生成相同 |
+| 图片任务详情 | `GET /v1/images/tasks/{id}` | `status`、`result` |
+| 图片任务列表 | `GET /v1/images/tasks?p=1&page_size=20` | `data[]`、`total` |
+| 创建视频 | `POST /v1/videos` | 顶层 `id` 和 `status` |
+| 视频任务详情 | `GET /v1/videos/{id}` | 顶层视频任务对象 |
+| 下载视频 | `GET /v1/videos/{id}/content` | 完成后的视频二进制 |
+
+## 三种响应方式
+
+| 方式 | 适用场景 | 完成判断 |
+| --- | --- | --- |
+| 同步 JSON | 文本、默认图片请求 | 检查 HTTP 状态与实际业务结果 |
+| SSE | 文本增量输出 | 识别协议结束事件，并处理错误与断流 |
+| 异步任务 | 图片可选、视频任务 | 保存 ID，查询到相应完成状态 |
+
+图片 `SUCCESS`、视频 `completed` 与 Responses 的 `completed` 属于不同对象；不能只写一个大小写转换来统一处理。
+
+## 接口约定
+
+- 示例中的模型、ID 和 URL 均须替换为自己的实际值；占位 URL 不可下载。
+- 所有 API 路径只拼接一次 `/v1`。SDK 的 Base URL 包含 `/v1` 时，不再额外添加。
+- HTTP `202` 表示任务已接受；查询的 `200` 表示查询成功，均不能直接标记业务已完成。
+- 返回时间戳若为整数，以字段说明的 Unix 秒为准，不直接按毫秒解析。
+- 兼容请求格式不等于支持其他平台的全部参数、任务路径或账户管理接口。
+
+继续阅读 [鉴权](/getting-started/authentication)、[错误处理](/api-reference/errors) 与 [调用限制](/guides/limits)。

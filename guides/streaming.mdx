@@ -1,0 +1,63 @@
+---
+title: "文本流式输出"
+description: "区分 Chat 与 Responses 的 SSE 事件，正确处理用量、结束和断流。"
+---
+
+流式调用用于边生成边显示文本。HTTP 响应是一组 SSE 事件，不是一个完整 JSON；图片和视频请使用各自任务接口。
+
+## Chat Completions
+
+```bash chat-stream.sh
+curl --fail-with-body --silent --show-error --no-buffer --max-time 120 \
+  "${VIZLUMA_BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"用三句话介绍杭州"}],"reasoning_effort":"low","max_completion_tokens":512,"stream":true,"stream_options":{"include_usage":true}}'
+```
+
+事件结构示意：
+
+```text
+data: {"choices":[{"index":0,"delta":{"content":"杭州"},"finish_reason":null}]}
+
+data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: {"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":20,"total_tokens":32}}
+
+data: [DONE]
+```
+
+上例为简化结构示意。某些 chunk 只有角色或空 `delta`，最后的用量 chunk 可能没有 choices，解析器必须允许这些情况。
+
+## Responses
+
+```bash responses-stream.sh
+curl --fail-with-body --silent --show-error --no-buffer --max-time 120 \
+  "${VIZLUMA_BASE_URL%/}/responses" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-sol","input":"用三句话介绍杭州","reasoning":{"effort":"low"},"max_output_tokens":512,"store":false,"stream":true}'
+```
+
+按 `event:` 或 JSON `type` 分派事件：
+
+| 事件 | 处理 |
+| --- | --- |
+| `response.output_text.delta` | 追加 `delta` 文本 |
+| `response.completed` | 标记完成，读取最终 response 与用量 |
+| `response.incomplete` | 按不完整结果处理，保留原因 |
+| `response.failed` / 错误事件 | 标记失败，保存脱敏错误 |
+
+Responses 不能依赖 Chat 的 `[DONE]` 来判断成功。
+
+## 生产解析要求
+
+1. 先判断 HTTP 状态与响应内容类型，非成功响应可能直接返回 JSON 错误或代理 HTML。
+2. 使用支持 UTF-8 增量解码的 SSE 解析器，按空行组合完整事件；一次网络读取不等于一个事件。
+3. 不把角色、推理、用量和普通文本混入同一个显示字段。
+4. 只在收到协议完成标记后标记成功；提前 EOF 应记录为结果不完整。
+5. 保留最终用量用于展示，对账仍以服务端记录为准。
+
+关闭业务代理的响应缓冲，按业务设置空闲和总等待上限。`curl --no-buffer` 只控制 curl 本地输出，不会修改你的代理配置。
+
+已显示一部分内容后断开，不能从头自动重发并当作续传；新的生成可能再次收费。见 [耗时与重试](/guides/timeouts-and-retries)。

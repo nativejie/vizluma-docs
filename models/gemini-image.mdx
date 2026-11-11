@@ -1,0 +1,56 @@
+---
+title: "Gemini 图像 / Nano Banana"
+description: "通过统一 Images 接口生成与编辑 Gemini 图片，支持明确的比例和分辨率。"
+---
+
+这三个型号使用 Vizluma 的 Images 接口。本页不要求 Google SDK，也不将 Gemini 原生或 Chat 接口视为本页已验收范围。
+
+| 模型 ID | 普通／张 | VIP／张 |
+| --- | --- | --- |
+| `gemini-3-pro-image-preview` | ¥0.55 | ¥0.44 |
+| `gemini-3.1-flash-image-preview` | ¥0.34 | ¥0.272 |
+| `gemini-nano-banana-2.1` | ¥0.28 | ¥0.224 |
+
+上述单价的 1K／2K／4K 同价，实际权限与费用以账户配置为准。
+
+## 生成示例
+
+```bash gemini-image.sh
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 600 \
+  "${VIZLUMA_BASE_URL%/}/images/generations" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gemini-3.1-flash-image-preview","prompt":"蓝色陶瓷杯，杯身一颗黄色星星，白色背景，无文字","size":"1:1","resolution":"2K","n":1,"response_format":"b64_json"}' \
+  -o generation.json
+```
+
+配置见 [鉴权与地址](/getting-started/authentication)。结果仍在 `data` 数组中，保存脚本见 [图片结果](/guides/image-results)。需要后台执行时增加异步请求头，见 [异步任务](/api-reference/image-tasks)。
+
+## 参数差异
+
+| 参数 | 本页型号支持范围 |
+| --- | --- |
+| `n` | 只能为 `1`，不支持单次批量 |
+| `resolution` | `1K`、`2K`、`4K`，省略默认 `1K` |
+| 比例形式 `size` | `1:1`、`2:3`、`3:2`、`3:4`、`4:3`、`4:5`、`5:4`、`9:16`、`16:9`、`21:9` |
+| 像素形式 `size` | 必须能对应支持的比例；按长边推导规格，不承诺逐像素匹配 |
+| `response_format` | `url` 或 `b64_json` |
+| `quality` | 省略或 `auto`，不支持其他档位 |
+| 参考图 | 最多 14 张，每张解码内容／上传文件不超过 20 MiB |
+
+不支持 `stream=true`、`mask`、`background`、`style`、`output_format`、`output_compression` 和 `input_fidelity`。多参考图数量是网关校验上限，具体效果需联调。
+
+## 图片编辑
+
+使用 `POST /v1/images/edits`，可沿用 [上传编辑](/api-reference/images-edits#方式一上传文件) 的字段，将 `model` 换为本页 ID，`n` 保持 1。JSON 参考图可使用 `images: [{"image_url":"https://example.com/input.png"}]`，地址需可下载；本地文件优先 multipart。
+
+## 已验证的组合
+
+| 模型 | 真实调用范围 |
+| --- | --- |
+| Banana 2.1 | 1K multipart 编辑，Base64 PNG，实际 1024×1024 |
+| Flash Preview | 2K 文生图，Base64，实际 2048×2048 |
+| Pro Preview | 4K 文生图，URL 下载，实际 4096×4096 |
+
+这些结果不等于全部比例、全部模型与所有编辑组合都完成验收，也不证明内部没有超分。URL 模式可能回退为图片 data URL，应按 [图片结果](/guides/image-results) 的实际字段处理。

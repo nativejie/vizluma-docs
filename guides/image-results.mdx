@@ -10,7 +10,7 @@ description: "处理 URL 或 Base64 响应，并按实际图片格式保存文�
 | `url` | `data[].url` | 从链接下载原始文件 |
 | `b64_json` | `data[].b64_json` | 解码 Base64 后保存文件 |
 
-推荐先使用已完成三个模型联调的 `url` 模式。网关实现了 Base64 返回方式，但本轮尚未对三个模型逐一复测，不将其视作与 URL 相同的完整验证范围。
+GPT Image 2／2.5 的基础 URL 生成与编辑已有联调；GPT Image 2 的部分编辑及 Gemini 的部分规格另已验证 Base64。型号与实测范围见 [模型目录](/models/overview)。URL 模式也可能在转存失败时返回图片 data URL，需按实际字段处理。
 
 <Note>
   请以实际响应中的有效字段为准，避免只处理数组第一项或只假设一种图片格式。若图片内联或转存失败，响应可能保留原始图片链接；不要依赖链接的域名、路径结构或永久有效性。
@@ -39,8 +39,10 @@ if not isinstance(items, list) or not items:
     raise SystemExit("响应中没有图片结果")
 
 for index, item in enumerate(items, start=1):
-    if item.get("b64_json"):
-        encoded = item["b64_json"]
+    encoded = item.get("b64_json")
+    if not encoded and str(item.get("url", "")).startswith("data:image/"):
+        encoded = item["url"]
+    if encoded:
         if encoded.startswith("data:"):
             encoded = encoded.split(",", 1)[1]
         encoded = "".join(encoded.split())
@@ -85,3 +87,9 @@ python3 save_images.py generation.json
 - 不要将含敏感内容的图片链接或 Base64 内容写入公共日志。
 - 图片链接不应被视为登录凭证，但可能被任何持有链接的人访问；涉及敏感素材时请按企业要求保存和控制分发。
 - 不要根据文件扩展名推断实际图片格式，也不要把 JSON 错误响应存成 `.png`。
+
+## 异步结果如何使用保存脚本
+
+异步任务的最终图片响应位于 `result`。先将该对象保存为图片响应 JSON，再交给保存脚本；[异步完整示例](/guides/async-images) 已自动输出 `image-result.json`。不要直接把整个任务对象当成含顶层 `data` 的同步响应。
+
+生产系统应为每次业务建立独立存储目录，关联业务 ID 与任务 ID，限制下载大小和允许的目标地址。图片下载不携带模型 Key；视频内容接口的鉴权规则不同，见 [视频 API](/api-reference/videos)。

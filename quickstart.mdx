@@ -1,80 +1,89 @@
 ---
 title: "快速开始"
-description: "选择文本或图片接入路径，使用已有企业 API Key 完成第一条请求。"
+description: "配置环境变量，从文本、图片或视频选择第一条请求。"
 ---
 
-## 准备工作
+## 1. 准备 API Key
 
-你需要一个已由管理员开通的企业账号及可用的 API Key。未开通请先查看 [企业开通](/getting-started/enterprise-access)，本服务不开放自助注册。
-
-在你的服务端或本地安全终端配置：
+先 [注册或登录并获取 Key](/getting-started/enterprise-access)，确认模型权限与可用额度。把 Key 配置在自己的服务端或安全本地终端：
 
 ```bash
 export VIZLUMA_API_KEY="YOUR_API_KEY"
 export VIZLUMA_BASE_URL="https://api.vizluma.online/v1"
 ```
 
-这里的 Key 只是占位符，生产环境请通过密钥管理系统注入。
+`YOUR_API_KEY` 是占位符，生产环境通过密钥管理系统注入。不要将 Key 放入网页前端。
 
-## 选择接入方式
+## 2. 选择第一条请求
 
-<CardGroup cols={2}>
-  <Card title="文本对话" icon="comment" href="/models/overview">
-    使用 GPT-6.1 Sol 的 Chat Completions／Responses 示例，按 Token 计费，支持 SSE。
-  </Card>
-  <Card title="图片生成与编辑" icon="image" href="/api-reference/images-generations">
-    继续使用下方单张生图示例，或查看图片接口参数，按实际图片数计费。
-  </Card>
-</CardGroup>
+<Tabs>
+<Tab title="文本对话">
 
-## 生成第一张图片
+```bash
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${VIZLUMA_BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"Reply with exactly OK."}],"reasoning_effort":"low","max_completion_tokens":128,"stream":false}' \
+  -o chat.json
+```
+
+读取 `choices[0].message.content`。完整字段见 [Chat Completions](/api-reference/chat-completions)，使用流式时见 [SSE](/guides/streaming)。
+
+</Tab>
+<Tab title="生成图片">
 
 ```bash
 curl --fail-with-body --silent --show-error \
   --connect-timeout 15 --max-time 600 \
-  "$VIZLUMA_BASE_URL/images/generations" \
+  "${VIZLUMA_BASE_URL%/}/images/generations" \
   -H "Authorization: Bearer $VIZLUMA_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-image-2",
-    "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
-    "size": "1024x1024",
-    "n": 1,
-    "response_format": "url"
-  }' \
+  -d '{"model":"gpt-image-2","prompt":"一只小橘猫坐在纯白色背景上，简洁插画，无文字","size":"1024x1024","n":1,"response_format":"url"}' \
   -o generation.json
 ```
 
-本示例默认同步，在图片完成后返回 JSON，不需要轮询。也可使用 [异步任务模式](/api-reference/image-tasks)，先保存任务 ID，再查询图片结果。生成可能需要几十秒或更长时间；示例设置 600 秒等待上限，**不代表每次耗时保证**。
+默认等待生成完成。读取 `data[].url`，再 [下载并保存图片](/guides/image-results)。`generation.json` 是接口响应，不是图片文件。
 
-## 查看响应
+想先取得任务 ID、稍后查询，见 [异步完整示例](/guides/async-images)。
 
-成功响应包含 `data` 数组，每个有效条目对应一张图片。以下是结构示意，`IMAGE_OBJECT.png` 不是可下载的实际文件：
+</Tab>
+<Tab title="视频任务">
 
-```json
-{
-  "created": 1793289600,
-  "data": [
-    {
-      "url": "https://static.vizluma.online/new-api/images/IMAGE_OBJECT.png"
-    }
-  ]
-}
+```bash
+curl --fail-with-body --silent --show-error --max-time 60 \
+  "${VIZLUMA_BASE_URL%/}/videos" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"seedance-2.5-480p","prompt":"A cat walking slowly on a sunny beach","duration":5,"ratio":"16:9","resolution":"480p"}' \
+  -o video-task.json
 ```
 
-不要把 `generation.json` 当作图片文件。读取 `data[].url` 下载图片，或使用 [图片结果与保存](/guides/image-results) 中的脚本。
+先保存顶层 `id`。通过 `GET /v1/videos/{id}` 查询，状态为 `completed` 后访问 `GET /v1/videos/{id}/content` 下载。完整流程见 [视频 API](/api-reference/videos)。
 
-## 改用 GPT Image 2.5
+视频配置已启用，付费生成与下载仍待实测；请先小规模验证自己的素材和规格。
 
-保持同一接口，将请求中的 `model` 替换为以下任意一个即可，前提是当前 Key 已开通对应模型权限：
+</Tab>
+</Tabs>
 
-```text
-gpt-image-2.5-flare
-gpt-image-2.5-sunburst
-```
+## 3. 检查调用结果
 
-当前三个图像模型的 1K／2K／4K 基础价统一为每张 0.20 元，VIP 为每张 0.16 元；文本价格另计，见 [计费说明](/pricing)。更多图片调用示例见 [Python 与 Node.js](/guides/client-examples)。
+| 请求类型 | 应保存的信息 | 成功判断 |
+| --- | --- | --- |
+| 同步文本 | 回复、完成原因及用量 | HTTP 成功且有完整业务结果 |
+| 同步图片 | 响应及实际图片 | 有可下载 URL 或可解码图片 |
+| 异步图片 | 任务 ID、原幂等键及最终 result | 任务 `SUCCESS` 并取得图片 |
+| 视频 | 任务 ID 及最终视频文件 | 任务 `completed` 并下载成功 |
 
-<Warning>
-  请求超时、断连或没有收到响应，不一定代表生成未执行。先核对调用记录并联系对接人员，不要立即循环重发。
-</Warning>
+图片异步的 HTTP `202` 只表示接受任务。查询的 HTTP `200` 只表示查询成功。费用请在 [控制台](https://vizluma.online/console) 核对，价格说明见 [计费](/pricing)。
+
+## 下一步
+
+<CardGroup cols={2}>
+  <Card title="SDK 接入" icon="code" href="/guides/openai-sdk">Python、Node.js SDK 与超时、重试配置。</Card>
+  <Card title="图片编辑" icon="image" href="/api-reference/images-edits">上传文件或传入可下载的参考图链接。</Card>
+  <Card title="选择模型" icon="layer-group" href="/models/overview">GPT Image、Gemini、Sol、Seedance 与 Wan 的接口差异。</Card>
+  <Card title="排查问题" icon="wrench" href="/guides/troubleshooting">定位参数、权限、限流、任务和下载问题。</Card>
+</CardGroup>
+
+超时或断连不等于未执行。图片使用原幂等键恢复原任务；文本与视频也应先核对记录，见 [重试说明](/guides/timeouts-and-retries)。

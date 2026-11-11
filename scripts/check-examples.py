@@ -7,6 +7,10 @@ import json
 import os
 from pathlib import Path
 import re
+import io
+import contextlib
+from unittest.mock import patch
+import urllib.error
 import shutil
 import subprocess
 import sys
@@ -106,11 +110,11 @@ class DocumentationExamples(unittest.TestCase):
             ("guides/image-results.mdx", "save_images.py"),
             ("api-reference/images-edits.mdx", "edit-upload.sh"),
             ("api-reference/images-edits.mdx", "edit-url.sh"),
-            ("models/overview.mdx", "chat.sh"),
-            ("models/overview.mdx", "responses.sh"),
-            ("models/overview.mdx", "video-create.sh"),
-            ("models/overview.mdx", "video-status.sh"),
-            ("models/overview.mdx", "video-download.sh"),
+            ("api-reference/chat-completions.mdx", "chat.sh"),
+            ("api-reference/responses.mdx", "responses.sh"),
+            ("api-reference/videos.mdx", "video-create.sh"),
+            ("api-reference/videos.mdx", "video-status.sh"),
+            ("api-reference/videos.mdx", "video-download.sh"),
             ("api-reference/image-tasks.mdx", "async-create.sh"),
             ("api-reference/image-tasks.mdx", "async-status.sh"),
             ("api-reference/image-tasks.mdx", "async-list.sh"),
@@ -300,12 +304,13 @@ class DocumentationExamples(unittest.TestCase):
         payload = {"data": [
             {"url": self.server.image_url},
             {"b64_json": "data:image/png;base64,\n" + encoded},
+            {"url": "data:image/png;base64," + encoded},
         ]}
         response = Path(self.work.name) / "generation.json"
         response.write_text(json.dumps(payload))
         result = self.run_example("save_images.py", str(response))
         self.assertEqual(result.returncode, 0, result.stderr)
-        for i in (1, 2):
+        for i in (1, 2, 3):
             self.assertEqual((Path(self.work.name) / f"image-{i}.png").read_bytes(), PNG)
         self.assertEqual(self.server.download_auth, [None])
         # Existing customer files must not be overwritten on a repeated download.
@@ -325,6 +330,90 @@ class DocumentationExamples(unittest.TestCase):
                 result = self.run_example("save_images.py", str(response))
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(list(Path(self.work.name).glob("image-*")), [])
+
+
+class AsyncWorkflowExamples(unittest.TestCase):
+    """Execute the exact published workflow; use transport fixtures without sockets."""
+
+    def run_workflow(self, statuses, resume=False, query_error=False):
+        source = (ROOT / "guides/async-images.mdx").read_text()
+        match = re.search(r"^```python async-image.py\n(.*?)^```", source, re.M | re.S)
+        self.assertIsNotNone(match)
+        requests = []
+        env = {"VIZLUMA_API_KEY": "fixture-key-not-real", "IDEMPOTENCY_KEY": "order-fixture",
+               "VIZLUMA_BASE_URL": "https://fixture.invalid/v1/"}
+        if resume:
+            env["IMAGE_TASK_ID"] = "img_fixture"
+        states = iter(statuses)
+
+        def respond(request, timeout):
+            requests.append(request)
+            self.assertEqual(timeout, 60)
+            if request.get_method() == "POST":
+                self.assertEqual(request.full_url, "https://fixture.invalid/v1/images/generations")
+                self.assertEqual(request.get_header("Prefer"), "respond-async")
+                self.assertEqual(request.get_header("Idempotency-key"), "order-fixture")
+                self.assertEqual(json.loads(request.data)["n"], 1)
+                body = {"id": "img_fixture", "status": "QUEUED"}
+            else:
+                self.assertEqual(request.full_url, "https://fixture.invalid/v1/images/tasks/img_fixture")
+                if query_error:
+                    raise urllib.error.HTTPError(request.full_url, 503, "fixture unavailable", {}, None)
+                body = {"id": "img_fixture", "status": next(states),
+                        "result": {"data": [{"url": "https://fixture.invalid/image.png"}]}}
+            self.assertEqual(request.get_header("Authorization"), "Bearer fixture-key-not-real")
+            return io.BytesIO(json.dumps(body).encode())
+
+        with tempfile.TemporaryDirectory() as work:
+            previous = Path.cwd()
+            try:
+                os.chdir(work)
+                with patch.dict(os.environ, env, clear=True), \
+                     patch("urllib.request.urlopen", side_effect=respond), \
+                     patch("time.sleep") as sleep, \
+                     contextlib.redirect_stdout(io.StringIO()) as output:
+                    failure = None
+                    try:
+                        exec(compile(match[1], "async-image.py", "exec"), {"__name__": "__main__"})
+                    except SystemExit as error:
+                        failure = str(error)
+                    files = {p.name: json.loads(p.read_text()) for p in Path(work).glob("*.json")}
+                    return requests, files, failure, sleep.call_count, output.getvalue()
+            finally:
+                os.chdir(previous)
+
+    def test_create_once_poll_then_save_and_resume_without_creating(self):
+        requests, files, error, waits, output = self.run_workflow(["IN_PROGRESS", "SUCCESS"])
+        self.assertIsNone(error)
+        self.assertEqual([r.get_method() for r in requests], ["POST", "GET", "GET"])
+        self.assertEqual(files["image-task.json"]["id"], "img_fixture")
+        self.assertEqual(files["image-result.json"]["data"][0]["url"], "https://fixture.invalid/image.png")
+        self.assertEqual(waits, 1)
+        self.assertNotIn("fixture-key-not-real", output)
+        requests, files, error, _, _ = self.run_workflow(["SUCCESS"], resume=True)
+        self.assertIsNone(error)
+        self.assertEqual([r.get_method() for r in requests], ["GET"])
+        self.assertNotIn("image-task.json", files)
+        self.assertIn("image-result.json", files)
+
+    def test_failure_unknown_and_unrecognized_states_never_resubmit(self):
+        for status in ("FAILURE", "UNKNOWN", "unexpected"):
+            with self.subTest(status=status):
+                requests, files, error, waits, _ = self.run_workflow([status])
+                self.assertIsNotNone(error)
+                self.assertIn(status, error)
+                self.assertEqual([r.get_method() for r in requests], ["POST", "GET"])
+                self.assertEqual(files["image-task.json"]["id"], "img_fixture")
+                self.assertNotIn("image-result.json", files)
+                self.assertEqual(waits, 0)
+
+    def test_query_transport_error_preserves_id_and_never_recreates(self):
+        requests, files, error, waits, _ = self.run_workflow([], query_error=True)
+        self.assertIn("503", error)
+        self.assertEqual(files["image-task.json"]["id"], "img_fixture")
+        self.assertNotIn("image-result.json", files)
+        self.assertEqual([r.get_method() for r in requests], ["POST", "GET"])
+        self.assertEqual(waits, 0)
 
 
 if __name__ == "__main__":

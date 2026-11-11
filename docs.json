@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Vizluma API",
-  "description": "面向企业开发者的 Vizluma API 对接文档：文本与图像模型、API 参考与计费说明。",
+  "description": "Vizluma 开发文档：快速开始、文本与图像生成、视频任务、SDK 集成和 API 参考",
   "logo": {
     "light": "/images/vizluma-symbol-v1.png",
     "dark": "/images/vizluma-symbol-v1.png",
@@ -16,12 +16,23 @@
   },
   "navbar": {
     "links": [
-      { "label": "企业控制台", "href": "https://sub.vizluma.online" }
+      {
+        "label": "官网",
+        "href": "https://vizluma.online"
+      },
+      {
+        "label": "控制台",
+        "href": "https://vizluma.online/console"
+      }
     ]
   },
   "api": {
-    "mdx": { "server": "https://api.vizluma.online" },
-    "playground": { "display": "none" }
+    "mdx": {
+      "server": "https://api.vizluma.online"
+    },
+    "playground": {
+      "display": "none"
+    }
   },
   "navigation": {
     "tabs": [
@@ -29,16 +40,46 @@
         "tab": "接入指南",
         "groups": [
           {
-            "group": "开始接入",
-            "pages": ["index", "getting-started/enterprise-access", "quickstart", "getting-started/authentication"]
+            "group": "开始使用",
+            "pages": [
+              "index",
+              "getting-started/enterprise-access",
+              "quickstart",
+              "getting-started/authentication"
+            ]
           },
           {
-            "group": "图像接入实践",
-            "pages": ["guides/client-examples", "guides/image-results", "guides/sizes-and-quality", "guides/timeouts-and-retries"]
+            "group": "开发与集成",
+            "pages": [
+              "guides/openai-sdk",
+              "guides/client-examples",
+              "guides/migration",
+              "guides/streaming"
+            ]
           },
           {
-            "group": "费用与支持",
-            "pages": ["pricing", "faq"]
+            "group": "图像工作流",
+            "pages": [
+              "guides/async-images",
+              "guides/image-results",
+              "guides/sizes-and-quality"
+            ]
+          },
+          {
+            "group": "生产与排障",
+            "pages": [
+              "guides/limits",
+              "guides/timeouts-and-retries",
+              "guides/troubleshooting",
+              "guides/support"
+            ]
+          },
+          {
+            "group": "费用与常见问题",
+            "pages": [
+              "pricing",
+              "faq"
+            ]
           }
         ]
       },
@@ -46,12 +87,31 @@
         "tab": "模型",
         "groups": [
           {
-            "group": "模型目录与文本接入",
-            "pages": ["models/overview"]
+            "group": "模型目录",
+            "pages": [
+              "models/overview"
+            ]
           },
           {
-            "group": "图像模型",
-            "pages": ["models/gpt-image-2", "models/gpt-image-2-5"]
+            "group": "文本",
+            "pages": [
+              "models/gpt-6-1-sol"
+            ]
+          },
+          {
+            "group": "图像",
+            "pages": [
+              "models/gpt-image-2",
+              "models/gpt-image-2-5",
+              "models/gpt-image-2-6",
+              "models/gemini-image"
+            ]
+          },
+          {
+            "group": "视频",
+            "pages": [
+              "models/video-models"
+            ]
           }
         ]
       },
@@ -59,12 +119,38 @@
         "tab": "API 参考",
         "groups": [
           {
-            "group": "图像接口",
-            "pages": ["api-reference/images-generations", "api-reference/images-edits", "api-reference/image-tasks"]
+            "group": "接口概览",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/models"
+            ]
           },
           {
-            "group": "接口约定",
-            "pages": ["api-reference/errors"]
+            "group": "文本接口",
+            "pages": [
+              "api-reference/chat-completions",
+              "api-reference/responses"
+            ]
+          },
+          {
+            "group": "图像接口",
+            "pages": [
+              "api-reference/images-generations",
+              "api-reference/images-edits",
+              "api-reference/image-tasks"
+            ]
+          },
+          {
+            "group": "视频接口",
+            "pages": [
+              "api-reference/videos"
+            ]
+          },
+          {
+            "group": "错误与排障",
+            "pages": [
+              "api-reference/errors"
+            ]
           }
         ]
       }

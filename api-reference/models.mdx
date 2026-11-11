@@ -1,0 +1,40 @@
+---
+title: "查询可用模型"
+description: "使用当前 API Key 查询可见模型，核对完整调用标识。"
+api: "GET /v1/models"
+playground: "none"
+---
+
+使用与生成请求相同的 Bearer Key 查询。模型列表会受到账号分组、Key 模型白名单及服务配置影响，不需要调用付费生成接口。
+
+```bash models.sh
+curl --fail-with-body --silent --show-error \
+  --connect-timeout 15 --max-time 30 \
+  "${VIZLUMA_BASE_URL%/}/models" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -o models.json
+```
+
+## 响应
+
+以下只是结构示意，并非完整或实时的授权模型清单：
+
+```json
+{
+  "object": "list",
+  "data": [
+    {"id": "gpt-6.1-sol", "object": "model"},
+    {"id": "gpt-image-2", "object": "model"}
+  ]
+}
+```
+
+从 `data[].id` 获取完整模型 ID。列表项可能包含 `created`、`owned_by` 等额外元数据，不能用它们推断账号价格、模型能力或底层路由。
+
+## 找不到所需模型
+
+1. 检查 Key 是否属于目标账户及环境。
+2. 检查 Key 的模型白名单、有效期与账号权限。
+3. 将完整模型 ID 提供给对接人员确认。
+
+模型可见不代表每种接口或所有参数均可用，也不代表额度充足。请继续阅读对应 [模型教程](/models/overview) 和 [API 参考](/api-reference/overview)。客户端不要对所有列出的型号自动发送“试用”生成请求。

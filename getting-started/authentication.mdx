@@ -15,7 +15,7 @@ https://api.vizluma.online/v1
 POST https://api.vizluma.online/v1/images/generations
 ```
 
-文本请求使用同一鉴权方式：`POST /v1/chat/completions` 或 `POST /v1/responses`，见 [文本接入示例](/models/overview)。
+文本请求使用同一鉴权方式：`POST /v1/chat/completions` 或 `POST /v1/responses`，见 [文本 API](/api-reference/chat-completions)。
 
 如果客户端已将 Base URL 设置为包含 `/v1`，路径只需追加 `/images/generations`，不要产生 `/v1/v1/`。
 
@@ -51,3 +51,13 @@ export VIZLUMA_BASE_URL="https://api.vizluma.online/v1"
 联系管理员禁用受影响的 Key 并更换凭证，同时核对调用记录。排障材料仅保留模型名、时间、HTTP 状态和请求 ID，不要发送完整 Key、密码、Cookie 或完整鉴权请求头。
 
 收到 `401` 时先检查是否漏传 `Bearer`、Key 是否复制完整、是否过期或已被禁用；不要对相同凭证不断重试。其他问题见 [错误处理](/api-reference/errors)。
+
+## 不同凭证的用途
+
+| 凭证 | 用途 | 是否用于模型调用 |
+| --- | --- | --- |
+| API Key | API 请求与允许的任务查询 | 是，使用 Bearer 请求头 |
+| 控制台密码 | 登录账号 | 否 |
+| 浏览器登录会话 | 控制台页面访问 | 否 |
+
+API Key 的账号余额、Key 额度、有效期、模型白名单和 IP 限制可能分别影响可用性。先通过 [模型列表](/api-reference/models) 核对可见范围，再对照 [错误处理](/api-reference/errors) 检查失败原因。获取 Key 的步骤见 [账号与 Key](/getting-started/enterprise-access)。
