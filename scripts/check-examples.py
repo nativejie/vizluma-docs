@@ -47,7 +47,7 @@ class ExampleServer(BaseHTTPRequestHandler):
             body = json.loads(raw)
         self.server.requests.append((self.path, self.headers, body))
         status = self.server.response_status
-        if status == 200 and self.headers.get("Prefer") == "respond-async":
+        if status == 200 and (self.path in ("/v1/images/generations/async", "/v1/images/edits/async") or self.headers.get("Prefer") == "respond-async"):
             payload = {"id": "img_example", "object": "image.task", "status": "QUEUED"}
             status = 202
         elif status == 200 and self.path == "/v1/videos":
@@ -277,11 +277,11 @@ class DocumentationExamples(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(len(self.server.requests), 1)
         path, headers, body = self.server.requests[0]
-        self.assertEqual(path, "/v1/images/generations")
-        self.assertEqual(headers["Prefer"], "respond-async")
-        self.assertEqual(headers["Idempotency-Key"], "your-unique-business-request-id")
+        self.assertEqual(path, "/v1/images/generations/async")
+        self.assertIsNone(headers["Prefer"])
+        self.assertIsNone(headers["Idempotency-Key"])
         self.assertEqual(headers["Authorization"], "Bearer " + self.env["VIZLUMA_API_KEY"])
-        self.assertEqual(body["n"], 1)
+        self.assertNotIn("n", body)
         self.assertEqual(body["model"], "gpt-image-2")
         self.assertEqual(json.loads((Path(self.work.name) / "image-task.json").read_text())["status"], "QUEUED")
         detail = json.loads((Path(self.work.name) / "image-task-status.json").read_text())
@@ -350,8 +350,8 @@ class AsyncWorkflowExamples(unittest.TestCase):
             requests.append(request)
             self.assertEqual(timeout, 60)
             if request.get_method() == "POST":
-                self.assertEqual(request.full_url, "https://fixture.invalid/v1/images/generations")
-                self.assertEqual(request.get_header("Prefer"), "respond-async")
+                self.assertEqual(request.full_url, "https://fixture.invalid/v1/images/generations/async")
+                self.assertIsNone(request.get_header("Prefer"))
                 self.assertEqual(request.get_header("Idempotency-key"), "order-fixture")
                 self.assertEqual(json.loads(request.data)["n"], 1)
                 body = {"id": "img_fixture", "status": "QUEUED"}
