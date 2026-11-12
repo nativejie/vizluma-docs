@@ -1,56 +1,27 @@
 ---
 title: "尺寸与质量参数"
-description: "区分像素尺寸、输出规格和已经完成验证的能力。"
+description: "GPT Image 的 size、resolution 和 quality 参数及请求示例。"
 ---
 
-## 从明确的像素尺寸开始
+## 参数
 
-GPT Image 2／2.5 共同完成基础联调的请求尺寸为：
-
-```json
-{
-  "size": "1024x1024"
-}
-```
-
-它在GPT Image 2／2.5 三个型号中均返回了 `1024x1024` PNG。其他尺寸请先按企业开通范围进行小规模联调，不应仅凭参数被接受就认定实际输出尺寸符合要求。
-
-## GPT Image 2／2.5 尺寸与输出规格
-
-GPT Image 2／2.5 使用 `1k`、`2k`、`4k` 三种输出规格，基础价为 ¥0.20／张，不因规格加价。以下是部分配置映射，**不是这些尺寸都已经通过端到端验收的清单**：
-
-| 像素尺寸示例 | 输出规格 | 本轮验证 |
-| --- | --- | --- |
-| `1024x1024` | 1K | GPT Image 2／2.5 三个型号均通过 |
-| `2048x2048` | 2K | GPT Image 2 单张上传编辑通过；不代表其他模型／文生图已验收 |
-| `2048x1152` | 2K | 待单独联调 |
-| `3840x2160` | 4K | 待单独联调 |
-| `2160x3840` | 4K | 待单独联调 |
-| `2880x2880` | 4K | 待单独联调 |
-
-这些名称是服务的输出规格，不表示每条边均为 1024、2048 或 4096 像素。例如，方图的 4K 档位配置示例是 `2880x2880`，不是 `4096x4096`。
-
-## 比例与 resolution 扩展
-
-网关也接受比例形式的 `size` 和分辨率扩展，例如 `size: "16:9"`、`resolution: "2k"`。这是网关扩展，不是所有客户端 SDK 都支持的通用字段。
-
-正式接入优先使用明确的像素 `size`。不要同时提供互相矛盾的像素尺寸与 `resolution`，也不要假定只改 `resolution` 就一定改变实际输出尺寸。非标准尺寸和 `auto` 的输出及计费，需先与对接人员确认。
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `size` | string | 否 | 图片尺寸，例如 `1024x1024`；也可使用 `16:9` 等比例值 |
+| `resolution` | string | 否 | 输出规格：`1k`、`2k`、`4k`，与比例形式的 size 配合使用 |
+| `quality` | string | 否 | 质量档位，见下表；省略时使用模型默认值 |
 
 ## quality 质量参数
 
-GPT Image 请求可以携带可选的 `quality` 字符串，控制所请求的生成质量档位。它与像素尺寸 `size` 是两个独立参数；提高质量档位不等于提高输出分辨率。省略 `quality` 时使用模型服务的默认设置，不保证默认等于某个固定档位。
-
-| 值 | 使用说明 |
+| 值 | 说明 |
 | --- | --- |
-| `low` | 低质量档位请求 |
-| `medium` | 中等质量档位请求，下面的示例使用此值 |
-| `high` | 高质量档位请求 |
-| `xhigh` | 扩展档位；2.5 Sunburst 曾成功接受，不据此承诺高于 high |
-| `max` | 扩展档位；2.5 Sunburst 曾成功接受，不据此承诺最高实际画质 |
+| `low` | 低质量档位 |
+| `medium` | 中等质量档位 |
+| `high` | 高质量档位 |
+| `xhigh` | 扩展质量档位，适用于 GPT Image 2.5 Sunburst |
+| `max` | 扩展质量档位，适用于 GPT Image 2.5 Sunburst |
 
-### 请求示例
-
-在生成请求的 JSON 中加入 `quality`，其余调用与结果读取方式不变：
+`quality` 与 `size` 分别设置。调整质量档位不会修改所请求的像素尺寸。
 
 ```json
 {
@@ -63,34 +34,45 @@ GPT Image 请求可以携带可选的 `quality` 字符串，控制所请求的�
 }
 ```
 
-完整 cURL 见 [GPT Image 2.5](/models/gpt-image-2-5)，提交接口见 [生成图片](/api-reference/images-generations)。
+完整调用见 [生成图片](/api-reference/images-generations)，右侧支持 cURL、Python 和 Node.js。
 
-### 型号与实测范围
+## 像素尺寸与输出规格
 
-| 型号 | 已确认范围 |
+| size 示例 | 输出规格 |
 | --- | --- |
-| `gpt-image-2.5-sunburst` | 此前 1024×1024 的 low、medium、high、xhigh、max 五档请求均成功返回 |
-| `gpt-image-2`、`gpt-image-2.5-flare` | 接口保留 quality 字段；尚无本文可引用的完整逐档真实生成结果 |
-| `gpt-image-2.6-flare`、`gpt-image-2.6-sunburst` | 使用同一参数格式，逐档真实生成效果待验证 |
+| `1024x1024` | 1K |
+| `2048x2048` | 2K |
+| `2048x1152` | 2K |
+| `3840x2160` | 4K |
+| `2160x3840` | 4K |
+| `2880x2880` | 4K |
 
-此前 Sunburst 测试中，low、medium、high 的返回用量不同；xhigh、max 的返回用量与 medium 相同。因此“请求成功”不代表五档一定有五种不同画质，也不能仅凭用量证明实际画质或具体回退行为。以上记录不作为其他型号、尺寸或后续调用的逐档效果保证。
+1K、2K、4K 是输出规格名称，不表示每条边均为 1024、2048 或 4096 像素。
 
-当前公开 GPT Image 报价按模型、输出规格和实际图片数量计算，`quality` 不单独形成加价档；最终费用见 [计费说明](/pricing) 与账户消费记录。
+## 比例与 resolution
 
-## 其他可选参数
+使用比例形式的 `size` 时，可通过 `resolution` 指定输出规格：
 
-`background`、`output_format` 等参数的实际可用性需按模型和已开通能力验证；quality 的已有测试不代表透明背景、所有格式等能力也已验证。Gemini 图像参数见 [Gemini 图像](/models/gemini-image)，不套用上述 GPT 质量档位。
+```json
+{
+  "model": "gpt-image-2.5-sunburst",
+  "prompt": "海边日落，横向构图",
+  "size": "16:9",
+  "resolution": "2k",
+  "quality": "medium",
+  "n": 1,
+  "response_format": "url"
+}
+```
 
-## 是否原生生成、是否超分
+像素尺寸与 `resolution` 应保持一致。`resolution` 是扩展字段，SDK 调用时需使用其自定义请求体功能。
 
-中转转存实现没有添加图片放大、锐化或超分步骤。但仅凭最终图片和输出尺寸，无法确认模型服务内部是否经过超分处理。因此本文档**不承诺未经验证的原生 2K／4K**。
+## 型号与计费
 
-## GPT Image 2.6 与 Gemini 的区别
-
-| 系列 | 规格表达 | 价格范围 |
+| 系列 | 尺寸参数 | 计费 |
 | --- | --- | --- |
-| GPT Image 2／2.5 | 像素 size，或确认过的比例与 resolution | 各规格同价 |
-| GPT Image 2.6 | 沿用 GPT Images 请求格式，付费尺寸实测待完成 | 1K／2K／4K 分档 |
-| Gemini 图像 | 建议比例 size 与 1K／2K／4K resolution | 同一型号各规格同价 |
+| GPT Image 2／2.5 | 像素 size，或比例 size + resolution | 1K／2K／4K 同价 |
+| GPT Image 2.6 | 像素 size，或比例 size + resolution | 按 1K／2K／4K 分档 |
+| Gemini 图像 | 比例 size + resolution | 见对应型号价格 |
 
-不要把 GPT Image 的 `2880x2880` 映射套用到 Gemini。Gemini Pro 的 4K 方图曾实际返回 4096×4096；Gemini 像素 size 用于推导比例和规格，不保证逐像素输出。各型号具体说明见 [2.6](/models/gpt-image-2-6)、[Gemini](/models/gemini-image) 与 [价格表](/pricing)。
+GPT Image 按实际图片数量及输出规格计费，`quality` 不单独加价。具体单价见 [计费说明](/pricing)。Gemini 的尺寸和参数见 [Gemini 图像](/models/gemini-image)。

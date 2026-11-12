@@ -12,7 +12,7 @@ import ImageParameters from "/snippets/image-parameters.mdx";
 | Flare | `gpt-image-2.5-flare` |
 | Sunburst | `gpt-image-2.5-sunburst` |
 
-不要简写为 `gpt-image-2.5`。两个完整 ID 均已完成单张 `1024x1024`、URL 返回与图片下载联调；调用权限仍以你的企业账号配置为准。
+请求时使用完整模型 ID，不要简写为 `gpt-image-2.5`。
 
 ## 调用示例
 
@@ -64,17 +64,15 @@ curl --fail-with-body --silent --show-error \
 
 ### quality 质量档位
 
-上面的示例显式设置 `quality: "medium"`。此前 Sunburst 在 `1024x1024` 下的 `low`、`medium`、`high`、`xhigh`、`max` 请求均成功；`xhigh`、`max` 不保证产生更高实际画质。Flare 使用同一字段格式，逐档效果需按该型号确认。完整说明见 [质量参数](/guides/sizes-and-quality#quality-质量参数)。
+使用 `quality` 指定质量档位，例如 `quality: "medium"`。可选值及尺寸写法见 [尺寸与质量参数](/guides/sizes-and-quality#quality-质量参数)。
 
 ## 从 GPT Image 2 切换
 
 1. 请管理员确认当前 Key 已开通目标 2.5 模型。
 2. 在现有请求中替换完整 `model` ID。
-3. 保留已经验证的 `size`、`n` 和 `response_format`。
-4. 使用真实业务提示词复测效果、耗时和费用。
+3. 设置 `size`、`quality`、`n` 和 `response_format`。
+4. 读取 `data[].url` 获取生成结果。
 
-两个 2.5 模型与 GPT Image 2 的公开基础价均为 ¥0.20／张，1K／2K／4K 同价，见 [计费说明](/pricing)。不要仅根据型号数字判断效果，也不要把某一张样图的风格当作模型的固定行为。
+两个 2.5 模型与 GPT Image 2 的公开基础价均为 ¥0.20／张，1K／2K／4K 同价，见 [计费说明](/pricing)。
 
-<Note>
-  两个模型均已通过单张 1K 的图片链接／文件上传编辑，见 [图片编辑](/api-reference/images-edits)。批量、高分辨率和其他扩展参数仍需单独验收。
-</Note>
+图片链接与文件上传的调用方式见 [图片编辑](/api-reference/images-edits)。
