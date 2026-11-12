@@ -1,0 +1,59 @@
+/* Compact reading scale. Keep the root size and code blocks unchanged so
+   browser zoom, controls, and syntax-highlighted examples remain usable. */
+#page-title {
+  font-size: 30px;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+#content-area > .prose {
+  font-size: 16px;
+  line-height: 1.625;
+}
+
+#content-area .mdx-content {
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+#content-area .mdx-content h2 {
+  font-size: 21px;
+  line-height: 1.4;
+  margin-top: 28px;
+  margin-bottom: 14px;
+}
+
+#content-area .mdx-content h3 {
+  font-size: 17px;
+  line-height: 1.5;
+  margin-top: 24px;
+  margin-bottom: 10px;
+}
+
+#content-area .mdx-content :where(p, ul, ol) {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+#content-area .mdx-content table {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#sidebar :where(a, h3),
+#table-of-contents {
+  font-size: 13px;
+  line-height: 21px;
+}
+
+#sidebar a {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+@media (max-width: 639px) {
+  #page-title {
+    font-size: 26px;
+    line-height: 1.3;
+  }
+}
