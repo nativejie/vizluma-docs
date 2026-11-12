@@ -1,11 +1,11 @@
 ---
-title: "Claude 透传保真"
+title: "Claude"
 description: "九个 Claude 模型的完整调用 ID、Messages 和 Chat 协议入口。"
 ---
 
 ## 模型清单
 
-2026-11-12 线上公开目录已配置以下九个型号，统一显示 **Claude 透传保真**，支持的入口为 Anthropic Messages 与 OpenAI 格式 Chat Completions。实际调用仍取决于 Key 权限与额度。
+2026-11-12 线上公开目录已配置以下九个型号，支持的入口为 Anthropic Messages 与 OpenAI 格式 Chat Completions。实际调用仍取决于 Key 权限与额度。
 
 | 系列 | 完整模型 ID |
 | --- | --- |
@@ -27,7 +27,7 @@ description: "九个 Claude 模型的完整调用 ID、Messages 和 Chat 协议�
 | 原本使用 Anthropic 消息格式 | `POST /v1/messages` | `content[]` 中 `type=text` 的 `text` |
 | 已有 OpenAI 格式聊天应用 | `POST /v1/chat/completions` | `choices[].message.content` |
 
-希望使用 Anthropic 格式的消息块与事件时，优先使用 [Messages API](/api-reference/messages)。Chat 入口涉及协议转换，不应将“透传保真”标签理解为所有字段、请求头或原始字节都不经处理。
+使用 Anthropic 格式的消息块与事件时，选择 [Messages API](/api-reference/messages)；已有 OpenAI 格式聊天应用可选择 Chat Completions。
 
 ## Chat 兼容示例
 
@@ -40,7 +40,7 @@ curl --fail-with-body --silent --show-error --max-time 120 \
   -o claude-chat.json
 ```
 
-准备环境变量见 [鉴权与地址](/getting-started/authentication)。原生协议的完整请求、响应与流式事件见 [Messages 参考](/api-reference/messages)。不要给模型名添加 `-vip` 或供应线路后缀。
+准备环境变量见 [鉴权与地址](/getting-started/authentication)。原生协议的完整请求、响应与流式事件见 [Messages 参考](/api-reference/messages)。请求中使用上表列出的完整模型 ID。
 
 ## 价格与缓存
 
