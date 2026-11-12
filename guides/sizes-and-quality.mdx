@@ -36,9 +36,50 @@ GPT Image 2／2.5 使用 `1k`、`2k`、`4k` 三种输出规格，基础价为 ¥
 
 正式接入优先使用明确的像素 `size`。不要同时提供互相矛盾的像素尺寸与 `resolution`，也不要假定只改 `resolution` 就一定改变实际输出尺寸。非标准尺寸和 `auto` 的输出及计费，需先与对接人员确认。
 
-## quality 等可选参数
+## quality 质量参数
 
-`quality`、`background`、`output_format` 等参数的实际可用性仍需按模型和已开通能力验证。当前基础教程不将它们列为三个模型均已验证的稳定参数，也不提供未经验证的透明背景或质量档位承诺。
+GPT Image 请求可以携带可选的 `quality` 字符串，控制所请求的生成质量档位。它与像素尺寸 `size` 是两个独立参数；提高质量档位不等于提高输出分辨率。省略 `quality` 时使用模型服务的默认设置，不保证默认等于某个固定档位。
+
+| 值 | 使用说明 |
+| --- | --- |
+| `low` | 低质量档位请求 |
+| `medium` | 中等质量档位请求，下面的示例使用此值 |
+| `high` | 高质量档位请求 |
+| `xhigh` | 扩展档位；2.5 Sunburst 曾成功接受，不据此承诺高于 high |
+| `max` | 扩展档位；2.5 Sunburst 曾成功接受，不据此承诺最高实际画质 |
+
+### 请求示例
+
+在生成请求的 JSON 中加入 `quality`，其余调用与结果读取方式不变：
+
+```json
+{
+  "model": "gpt-image-2.5-sunburst",
+  "prompt": "一只橘猫，简洁插画，纯白背景",
+  "size": "1024x1024",
+  "quality": "medium",
+  "n": 1,
+  "response_format": "url"
+}
+```
+
+完整 cURL 见 [GPT Image 2.5](/models/gpt-image-2-5)，提交接口见 [生成图片](/api-reference/images-generations)。
+
+### 型号与实测范围
+
+| 型号 | 已确认范围 |
+| --- | --- |
+| `gpt-image-2.5-sunburst` | 此前 1024×1024 的 low、medium、high、xhigh、max 五档请求均成功返回 |
+| `gpt-image-2`、`gpt-image-2.5-flare` | 接口保留 quality 字段；尚无本文可引用的完整逐档真实生成结果 |
+| `gpt-image-2.6-flare`、`gpt-image-2.6-sunburst` | 使用同一参数格式，逐档真实生成效果待验证 |
+
+此前 Sunburst 测试中，low、medium、high 的返回用量不同；xhigh、max 的返回用量与 medium 相同。因此“请求成功”不代表五档一定有五种不同画质，也不能仅凭用量证明实际画质或具体回退行为。以上记录不作为其他型号、尺寸或后续调用的逐档效果保证。
+
+当前公开 GPT Image 报价按模型、输出规格和实际图片数量计算，`quality` 不单独形成加价档；最终费用见 [计费说明](/pricing) 与账户消费记录。
+
+## 其他可选参数
+
+`background`、`output_format` 等参数的实际可用性需按模型和已开通能力验证；quality 的已有测试不代表透明背景、所有格式等能力也已验证。Gemini 图像参数见 [Gemini 图像](/models/gemini-image)，不套用上述 GPT 质量档位。
 
 ## 是否原生生成、是否超分
 

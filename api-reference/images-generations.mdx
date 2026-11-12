@@ -23,25 +23,122 @@ Content-Type: application/json
 
 <RequestExample>
 
-```bash generate.sh
+```bash cURL
 curl --fail-with-body --silent --show-error \
   --connect-timeout 15 --max-time 600 \
   "$VIZLUMA_BASE_URL/images/generations" \
   -H "Authorization: Bearer $VIZLUMA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-image-2",
+    "model": "gpt-image-2.5-sunburst",
     "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
     "size": "1024x1024",
+    "quality": "medium",
     "n": 1,
     "response_format": "url"
   }' \
   -o generation.json
 ```
 
+```python Python
+import json
+import os
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+base_url = os.environ.get(
+    "VIZLUMA_BASE_URL", "https://api.vizluma.online/v1"
+).rstrip("/")
+api_key = os.environ["VIZLUMA_API_KEY"]
+payload = {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+    "size": "1024x1024",
+    "quality": "medium",
+    "n": 1,
+    "response_format": "url",
+}
+request = Request(
+    f"{base_url}/images/generations",
+    data=json.dumps(payload).encode("utf-8"),
+    headers={
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    },
+    method="POST",
+)
+with urlopen(request, timeout=600) as response:
+    result = json.load(response)
+
+Path("generation.json").write_text(
+    json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+)
+images = result.get("data", [])
+if not images or not all(image.get("url") for image in images):
+    raise RuntimeError("未返回有效图片链接，请检查 generation.json")
+for image in images:
+    print(image["url"])
+```
+
+```javascript Node.js
+// Node.js 20+，保存为 generate.mjs 后运行 node generate.mjs。
+import { writeFile } from "node:fs/promises";
+
+const baseUrl = (
+  process.env.VIZLUMA_BASE_URL || "https://api.vizluma.online/v1"
+).replace(/\/+$/, "");
+const apiKey = process.env.VIZLUMA_API_KEY;
+if (!apiKey) throw new Error("请先设置 VIZLUMA_API_KEY");
+
+const response = await fetch(baseUrl + "/images/generations", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gpt-image-2.5-sunburst",
+    prompt: "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
+    size: "1024x1024",
+    quality: "medium",
+    n: 1,
+    response_format: "url",
+  }),
+  signal: AbortSignal.timeout(600_000),
+});
+if (!response.ok) {
+  throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+}
+const result = await response.json();
+await writeFile("generation.json", JSON.stringify(result, null, 2), "utf8");
+if (!result.data?.length || !result.data.every((image) => image.url)) {
+  throw new Error("未返回有效图片链接，请检查 generation.json");
+}
+for (const image of result.data) console.log(image.url);
+```
+
 </RequestExample>
 
+右侧可切换 cURL、Python 和 Node.js，三种示例使用相同请求参数。Python 使用标准库；Node.js 使用内置 `fetch`，需 Node.js 20+，将脚本保存为 `generate.mjs` 后运行。示例保存 `generation.json`；Python 与 Node.js 同时打印图片链接，下载保存见 [图片结果](/guides/image-results)。
+
 环境变量设置见 [鉴权与地址](/getting-started/authentication)。
+
+## quality 质量参数
+
+GPT Image 的生成请求可增加 `quality`。例如，使用已测试过该档位的 `gpt-image-2.5-sunburst`：
+
+```json
+{
+  "model": "gpt-image-2.5-sunburst",
+  "prompt": "一只小橘猫，简洁插画，无文字",
+  "size": "1024x1024",
+  "quality": "medium",
+  "n": 1,
+  "response_format": "url"
+}
+```
+
+`quality` 与 `size` 分别设置；省略时使用模型服务默认质量。可选档位及型号实测范围见 [尺寸与质量参数](/guides/sizes-and-quality#quality-质量参数)。
 
 ## 成功响应
 
