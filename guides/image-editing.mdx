@@ -88,7 +88,7 @@ python3 save_images.py edit.json
 
 没有取得 ID 时，如需重试原提交，沿用原业务键、图片和参数。`409` 表示同键内容不一致；`UNKNOWN` 是结果待确认。生成成功但下载失败时只重新下载。
 
-要立即返回任务 ID，增加 `Prefer: respond-async` 并按 [异步示例](/guides/async-images) 查询。异步返回的是任务对象，不能直接按本例同步图片结果解析。
+要立即返回任务 ID，将请求地址改为 `/v1/images/edits/async`，按 [异步示例](/guides/async-images) 查询。请求体不变，无需额外异步请求头。异步响应从顶层 `id` 读取任务编号，成功后从 `result.data` 读取图片。
 
 ## 按型号适配
 

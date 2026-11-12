@@ -13,8 +13,10 @@ description: "按任务选择端点、响应形式和结果读取位置。"
 | 文本对话 | `POST /v1/chat/completions` | `choices[].message.content` |
 | Claude 消息 | `POST /v1/messages` | `content[]` 中 `type=text` 的 `text` |
 | Responses | `POST /v1/responses` | `output[].content[]` 中的 `output_text` |
-| 生成图片 | `POST /v1/images/generations` | 同步 `data[]`；异步顶层任务 `id` |
-| 编辑图片 | `POST /v1/images/edits` | 与图片生成相同 |
+| 生成图片 | `POST /v1/images/generations` | `data[]` |
+| 编辑图片 | `POST /v1/images/edits` | `data[]` |
+| 异步生成图片 | `POST /v1/images/generations/async` | 顶层任务 `id` |
+| 异步编辑图片 | `POST /v1/images/edits/async` | 顶层任务 `id` |
 | 图片任务详情 | `GET /v1/images/tasks/{id}` | `status`、`result` |
 | 图片任务列表 | `GET /v1/images/tasks?p=1&page_size=20` | `data[]`、`total` |
 | 创建视频 | `POST /v1/videos` | 顶层 `id` 和 `status` |

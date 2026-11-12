@@ -5,6 +5,12 @@ description: "创建一次、保存任务 ID、轮询结果，并在中断后继
 
 适合网页生成按钮、批量工作流或容易断网的客户端。由业务后端提交图片任务，将任务 ID 绑定业务记录，再把进度显示给前端。完整协议见 [异步 API](/api-reference/image-tasks)。
 
+## 最简调用
+
+向 `POST /v1/images/generations/async` 发送 API Key、`model` 和 `prompt` 即可。不必携带 `Prefer` 或 `async` 参数，编辑图片用 `/v1/images/edits/async`。接口返回任务 ID 后，使用 `/v1/images/tasks/{id}` 查询图片。
+
+下面的完整业务示例额外使用可选的幂等键，方便网络中断后安全重试。
+
 ## 准备
 
 配置 [API 环境变量](/getting-started/authentication)，为每次新业务指定一个唯一编号。**同一业务的重试必须使用原编号与原请求内容**。
@@ -52,11 +58,11 @@ if not task_id:
     key = os.environ.get("IDEMPOTENCY_KEY", "").strip()
     if not key or len(key.encode()) > 128 or "\r" in key or "\n" in key:
         raise SystemExit("请配置不超过 128 字节且不含换行的 IDEMPOTENCY_KEY")
-    task = call_api("/images/generations", {
+    task = call_api("/images/generations/async", {
         "model": "gpt-image-2",
         "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
         "size": "1024x1024", "n": 1, "response_format": "url",
-    }, {"Prefer": "respond-async", "Idempotency-Key": key})
+    }, {"Idempotency-Key": key})
     task_id = task.get("id", "")
     if not task_id:
         raise SystemExit("未取得任务 ID；如需重试，请保留原键与原请求")

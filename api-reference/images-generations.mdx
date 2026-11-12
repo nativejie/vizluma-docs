@@ -167,7 +167,7 @@ HTTP `200`，以下链接为结构占位，不是实际图片：
 ## 执行与结果
 
 - 默认同步等待图片完成，HTTP `200` 返回原有图片结果。
-- 需要异步时增加 `Prefer: respond-async`（或 `?async=true`），HTTP `202` 返回任务 ID；使用 [异步生图与任务查询](/api-reference/image-tasks) 获取结果。
+- 异步生成直接使用 `POST /v1/images/generations/async`，请求体相同，无需额外的 `async` 参数或 `Prefer` 请求头，HTTP `202` 返回任务 ID；使用 [异步生图与任务查询](/api-reference/image-tasks) 获取结果。原接口仍兼容 `Prefer: respond-async` 和 `?async=true`。
 - 建议生成和编辑都设置 `Idempotency-Key`；同一业务重试必须保留原键和请求内容，不要让 SDK 自动换键重复提交。
 - 不支持客户端要求 SSE 流式生图。
 - `n` 大于 1 时需遍历返回数组，不要假设只读取第一项即可。

@@ -1,40 +1,107 @@
 ---
 title: "异步生图与任务查询"
-description: "提交后取得任务 ID，查询图片结果，并通过幂等键避免重复提交。"
+description: "提交生成或编辑任务，使用任务 ID 查询状态和图片结果。"
+api: "POST /v1/images/generations/async"
 playground: "none"
 ---
 
-图片生成和编辑默认仍同步等待结果。需要后台生成时，在原有请求中增加
-`Prefer: respond-async`，或使用 `?async=true`，不需要更换模型或请求体格式。
-以下示例使用企业已有的 API Key，地址配置见 [鉴权与地址](/getting-started/authentication)。
+## 接口
 
-## 1. 提交并保存任务 ID
+| 操作 | 方法与路径 |
+| --- | --- |
+| 异步生成图片 | `POST /v1/images/generations/async` |
+| 异步编辑图片 | `POST /v1/images/edits/async` |
+| 查询任务 | `GET /v1/images/tasks/{id}` |
+| 任务列表 | `GET /v1/images/tasks?p=1&page_size=20` |
 
-每次新业务生成设置一个新的 `IDEMPOTENCY_KEY`；同一次业务的网络重试必须沿用原键和原请求内容。
-下面的键是占位值，请替换为你自己的业务请求编号。
+Base URL：`https://api.vizluma.online/v1`。请求使用 `Authorization: Bearer YOUR_API_KEY`，见 [鉴权与地址](/getting-started/authentication)。
+
+## 请求参数
+
+| 参数 | 位置 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `model` | JSON | 是 | 完整模型 ID |
+| `prompt` | JSON | 是 | 图片描述或编辑指令 |
+| `size` | JSON | 否 | 图片尺寸，如 `1024x1024` |
+| `quality` | JSON | 否 | 质量档位，如 `medium`，见 [质量参数](/guides/sizes-and-quality#quality-质量参数) |
+| `n` | JSON | 否 | 图片数量，默认 1 |
+| `response_format` | JSON | 否 | `url` 或 `b64_json` |
+| `Idempotency-Key` | 请求头 | 否 | 同一业务重试使用相同键及请求内容；最长 128 字节，不含换行 |
+
+专用异步地址不需要 `async` 参数或 `Prefer` 请求头。其他生成参数见 [生成图片](/api-reference/images-generations)。
+
+## 提交任务
+
+最小请求只需 `model` 和 `prompt`。
+
+<RequestExample>
 
 ```bash async-create.sh
-export IDEMPOTENCY_KEY="your-unique-business-request-id"
-
 curl --fail-with-body --silent --show-error \
   --connect-timeout 15 --max-time 60 \
-  "${VIZLUMA_BASE_URL%/}/images/generations" \
+  "${VIZLUMA_BASE_URL%/}/images/generations/async" \
   -H "Authorization: Bearer $VIZLUMA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "Prefer: respond-async" \
-  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
-  -d '{
-    "model": "gpt-image-2",
-    "prompt": "一只小橘猫坐在纯白色背景上，简洁插画，无文字",
-    "size": "1024x1024",
-    "n": 1,
-    "response_format": "url"
-  }' \
-  -D image-task.headers -o image-task.json
+  -d '{"model":"gpt-image-2","prompt":"一只小橘猫，纯白背景，简洁插画"}' \
+  -o image-task.json
 ```
 
-接受任务返回 HTTP `202`，不是已经出图或免于后续校验失败的保证。任务可能已开始或完成，
-请以响应实际 `status` 为准。以下均为结构占位：
+```python Python
+import json
+import os
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+base = os.environ.get("VIZLUMA_BASE_URL", "https://api.vizluma.online/v1").rstrip("/")
+request = Request(
+    base + "/images/generations/async",
+    data=json.dumps({
+        "model": "gpt-image-2",
+        "prompt": "一只小橘猫，纯白背景，简洁插画",
+    }).encode("utf-8"),
+    headers={
+        "Authorization": "Bearer " + os.environ["VIZLUMA_API_KEY"],
+        "Content-Type": "application/json",
+    },
+    method="POST",
+)
+with urlopen(request, timeout=60) as response:
+    task = json.load(response)
+Path("image-task.json").write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
+print(task["id"])
+```
+
+```javascript Node.js
+// Node.js 20+，保存为 async-create.mjs 后运行。
+import { writeFile } from "node:fs/promises";
+
+const base = (process.env.VIZLUMA_BASE_URL || "https://api.vizluma.online/v1").replace(/\/+$/, "");
+const key = process.env.VIZLUMA_API_KEY;
+if (!key) throw new Error("请先设置 VIZLUMA_API_KEY");
+
+const response = await fetch(base + "/images/generations/async", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gpt-image-2",
+    prompt: "一只小橘猫，纯白背景，简洁插画",
+  }),
+  signal: AbortSignal.timeout(60_000),
+});
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+const task = await response.json();
+await writeFile("image-task.json", JSON.stringify(task, null, 2), "utf8");
+console.log(task.id);
+```
+
+</RequestExample>
+
+### 创建响应
+
+HTTP `202`：
 
 ```json
 {
@@ -46,26 +113,16 @@ curl --fail-with-body --silent --show-error \
 }
 ```
 
-响应头包含：
+保存顶层 `id` 用于查询。响应头 `X-Image-Task-Id` 也包含该 ID，`Location` 为 `/v1/images/tasks/{id}`。HTTP `202` 表示已接受任务，生成结果通过查询接口获取。
 
-```http
-Location: /v1/images/tasks/img_example
-X-Image-Task-Id: img_example
-Preference-Applied: respond-async
-Cache-Control: private, no-store
-```
+## 异步编辑
 
-**立即保存 `id`、幂等键和原始请求。** `Location` 是同一 API 域名下的相对路径。
-编辑图片时，对 [图片编辑](/api-reference/images-edits) 的 JSON 或 multipart 请求增加相同请求头即可。
-不要把 `Prefer`、`Idempotency-Key` 写进 JSON 请求体，也不要手动拼 multipart boundary。
+将 [图片编辑](/api-reference/images-edits) 的请求地址改为 `/v1/images/edits/async`。JSON 图片链接和 multipart 文件上传参数保持不变，创建响应同上。
 
-## 2. 查询任务
-
-将任务 ID 替换为提交时保存的实际值。查询使用 API Key，不使用官网登录凭据。
+## 查询任务
 
 ```bash async-status.sh
 TASK_ID="img_example"
-
 curl --fail-with-body --silent --show-error \
   --connect-timeout 15 --max-time 60 \
   "${VIZLUMA_BASE_URL%/}/images/tasks/$TASK_ID" \
@@ -73,23 +130,17 @@ curl --fail-with-body --silent --show-error \
   -o image-task-status.json
 ```
 
-建议每 5～10 秒查询一次，并设置业务自己的总等待上限；这不是生成耗时或 SLA 承诺。
-查询 HTTP `200` 仅表示查询成功，不代表生成成功。
+建议每 5～10 秒查询一次。
 
-| `status` | 含义与处理 |
-| --- | --- |
-| `QUEUED` | 已排队，继续查询 |
-| `IN_PROGRESS` | 正在处理，继续查询 |
-| `SUCCESS` | 已完成，从 `result` 读取图片响应 |
-| `FAILURE` | 已确认失败，查看 `response_code` 和 `result.error`；修正原因后再决定是否创建新业务请求 |
-| `UNKNOWN` | 结果待确认，不能当作失败；继续核对任务和调用记录，不要换新幂等键自动重发 |
+| status | 含义 | 处理 |
+| --- | --- | --- |
+| `QUEUED` | 已排队 | 继续查询 |
+| `IN_PROGRESS` | 正在生成 | 继续查询 |
+| `SUCCESS` | 已完成 | 读取 `result.data` |
+| `FAILURE` | 失败 | 读取 `response_code` 与 `result.error` |
+| `UNKNOWN` | 结果待确认 | 保留任务 ID，继续核查原任务 |
 
-`UNKNOWN` 在可恢复任务取得确定结果后可能更新为 `SUCCESS` 或 `FAILURE`，也可能保持待确认；
-不保证服务重启后所有上游都能恢复查询，更不保证会自动重新生成。
-
-## 3. 保存图片结果
-
-成功时的 `result` 是原有图片响应，不是另一个视频式下载接口：
+### 成功响应
 
 ```json
 {
@@ -102,39 +153,27 @@ curl --fail-with-body --silent --show-error \
   "response_code": 200,
   "result": {
     "created": 1794300000,
-    "data": [
-      { "url": "https://static.vizluma.online/new-api/images/IMAGE_OBJECT.png" }
-    ]
+    "data": [{"url": "https://static.vizluma.online/new-api/images/IMAGE_OBJECT.png"}]
   }
 }
 ```
 
-- 遍历 `result.data`，按实际返回的 `url` 下载，或解码 `b64_json`。
-- 请求 `response_format=b64_json` 时，Base64 同样位于 `result.data`。
-- 下载图片不要携带 API Key；不要假设图片 URL 永久有效或固定使用某个域名。
-- 及时保存图片和必要任务信息，参见 [图片结果与保存](/guides/image-results)。
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 任务 ID |
+| `object` | string | 固定为 `image.task` |
+| `model` | string | 模型 ID |
+| `status` | string | 当前任务状态 |
+| `created_at` | integer | 创建时间，Unix 秒 |
+| `finished_at` | integer | 完成时间，Unix 秒，完成后返回 |
+| `response_code` | integer | 图片请求的 HTTP 状态码，有结果后返回 |
+| `result` | object | 原图片响应，有结果后返回 |
+| `result.data[].url` | string | 图片链接 |
+| `result.data[].b64_json` | string | Base64 图片；按请求的返回格式读取 |
 
-## 幂等、断连与重试
+图片下载与 Base64 保存见 [图片结果](/guides/image-results)。
 
-`Idempotency-Key` 最长 128 字节，不能包含回车或换行。去重范围是**同一账户**，
-不是每枚 API Key 单独计数；推荐同一次业务始终使用原 API Key。
-
-| 情况 | 行为 |
-| --- | --- |
-| 相同键、相同请求内容 | 复用同一任务，不因这次客户端重发另建生成任务 |
-| 相同键、不同请求内容或接口 | HTTP `409`，错误码 `idempotency_conflict`；原任务不被替换 |
-| 不提供键 | 服务端为每次提交生成新键，客户端再次提交不能依赖自动去重 |
-| 没有收到任务 ID | 如需重试原提交，沿用原键及原请求；不要生成新键盲目重发 |
-
-JSON 字段顺序或 multipart boundary 的变化不应让同一内容变成新业务；
-改变模型、提示词、参数、文件或生成／编辑接口则不是同一请求。
-同步请求也可以设置幂等键，收到任务响应头后可使用任务接口查询；同步与异步返回结构不能混用。
-
-幂等是防重复提交机制，不是无限期存储、上游恰好执行一次、免计费或重复请求重新出图的承诺。
-如原任务已失败或待确认，复用原键不会自动开始另一轮生成。
-异步模式不改变已有模型价格和账户分组规则，失败或待确认请求的最终费用以调用记录核对为准。
-
-## 查看本账户任务列表
+## 任务列表
 
 ```bash async-list.sh
 curl --fail-with-body --silent --show-error \
@@ -144,38 +183,14 @@ curl --fail-with-body --silent --show-error \
   -o image-task-list.json
 ```
 
-返回顶层 `object: "list"`、`data` 数组和 `total`，不是 `data.items`。
-列表以任务摘要为主，获取完整 `result` 请查询单个任务。只可查询本账户任务，
-其他账户或不存在的 ID 返回 `404`；缺失或无效 API Key 不能访问。
+返回 `{"object":"list","data":[...],"total":10}`。`p` 为页码，`page_size` 为每页数量。只能查询当前账户的任务；不存在或属于其他账户的任务返回 `404`。
 
-本接口不用于文本 SSE 或视频任务。不要将 `stream=true` 和异步选项一起使用；
-任务接口也不能补回尚未保存的历史图片。视频使用独立的 `/v1/videos` 协议，状态名和结果结构不同。
+## 重试与兼容
 
-## 业务端如何保存任务
+- `Idempotency-Key` 为可选项。同一账户下，相同键和相同请求复用任务；相同键但请求内容不同返回 `409 idempotency_conflict`。
+- 未设置幂等键时，每次提交创建新任务。网络重试应保留原键和原请求内容。
+- 已取得任务 ID 时，断线或本地等待超时后继续查询原 ID。
+- 同步地址仍兼容 `Prefer: respond-async` 和 `?async=true`；与专用异步地址共用任务和幂等规则。
+- 异步接口沿用原模型价格，见 [计费说明](/pricing)。
 
-| 信息 | 保存时机 | 用途 |
-| --- | --- | --- |
-| 业务编号与幂等键 | 提交前 | 恢复同一次业务提交 |
-| 模型与必要参数 | 提交前 | 避免同键更换请求内容 |
-| 任务 ID | 创建响应后立即保存 | 后续查询不依赖浏览器连接 |
-| 最近状态与更新时间 | 每次查询后 | 页面恢复与后台调度 |
-| 最终结果或持久化图片地址 | 成功后 | 交付结果 |
-
-不要把可用 Key 存入任务记录。页面刷新时读取自己的业务任务并查询原 ID，不将刷新事件绑定到重新创建。见 [异步完整示例](/guides/async-images) 和 [上传改图](/guides/image-editing)。
-
-## 失败与待确认的结果示意
-
-下例仅说明结构，错误码与文字以实际返回为准：
-
-```json
-{
-  "id": "img_example",
-  "object": "image.task",
-  "model": "gpt-image-2",
-  "status": "FAILURE",
-  "response_code": 400,
-  "result": {"error": {"message": "示例：请求参数需要修正"}}
-}
-```
-
-`UNKNOWN` 不保证包含最终图片或错误。保留原 ID 核查，不能因 result 缺失就自动创建替代任务。
+完整创建、轮询与恢复脚本见 [异步生图示例](/guides/async-images)。

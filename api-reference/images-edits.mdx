@@ -7,7 +7,7 @@ description: "通过图片链接或文件上传，使用参考图与提示词完
 POST https://api.vizluma.online/v1/images/edits
 ```
 
-使用你的有效 API Key；获取方式见 [账号与 Key](/getting-started/enterprise-access)。编辑默认同步等待最终图片；也可增加 `Prefer: respond-async` 和 `Idempotency-Key`，取得任务 ID 后查询结果。JSON 与 multipart 上传均沿用原参数，参见 [异步生图与任务查询](/api-reference/image-tasks)。
+使用你的有效 API Key；获取方式见 [账号与 Key](/getting-started/enterprise-access)。编辑默认同步等待最终图片；需要异步时直接使用 `POST /v1/images/edits/async`，无需额外的 `async` 参数或 `Prefer` 请求头，取得任务 ID 后查询结果。`Idempotency-Key` 为可选的重试保护。JSON 与 multipart 上传均沿用原参数，参见 [异步生图与任务查询](/api-reference/image-tasks)。
 
 ## 已验证范围
 

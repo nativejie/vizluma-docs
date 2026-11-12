@@ -28,7 +28,7 @@ description: "把已有 OpenAI 格式应用迁移到 Vizluma，并检查参数�
 | 项目 | 需要检查的差异 |
 | --- | --- |
 | 图片同步 | Vizluma 默认等待完成，直接返回 `data[]` |
-| 图片异步 | 显式增加 `Prefer: respond-async`；查询 `/v1/images/tasks/{id}` |
+| 图片异步 | 生成使用 `/v1/images/generations/async`，编辑使用 `/v1/images/edits/async`；查询 `/v1/images/tasks/{id}` |
 | 图片状态 | `QUEUED`、`IN_PROGRESS`、`SUCCESS`、`FAILURE`、`UNKNOWN` |
 | 视频创建 | `POST /v1/videos`，不是 `/v1/videos/generations` |
 | 视频状态 | `queued`、`in_progress`、`completed`、`failed` |
