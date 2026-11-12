@@ -6,7 +6,7 @@
   letter-spacing: -0.025em;
 }
 
-#content-area > .prose {
+#content-area #header .prose {
   font-size: 16px;
   line-height: 1.625;
 }
