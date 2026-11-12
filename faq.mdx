@@ -20,10 +20,10 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
     使用 `gpt-image-2.5-flare` 或 `gpt-image-2.5-sunburst`，不要简写为 `gpt-image-2.5`。详见 [2.5 接入教程](/models/gpt-image-2-5)。
   </Accordion>
   <Accordion title="GPT-6.1 Sol 怎么调用？">
-    模型 ID 为 `gpt-6.1-sol`，使用同一 API Base URL 和企业 API Key，通过 `/chat/completions` 或 `/responses` 调用，支持基础文本和 SSE 流式返回。请求参数与示例见 [文本接入](/models/gpt-6-1-sol)。`gpt-6.1-terra` 当前未开放。
+    模型 ID 为 `gpt-6.1-sol`，使用同一 API Base URL 和企业 API Key，通过 `/chat/completions` 或 `/responses` 调用，支持基础文本和 SSE 流式返回。请求参数与示例见 [文本接入](/models/gpt-6-1-sol)。Terra 与其他 GPT 新型号现已配置，见 [GPT 文本模型](/models/gpt-text)。
   </Accordion>
   <Accordion title="文本模型如何收费？为什么不能只按回复字数估算？">
-    GPT-6.1 Sol 每百万 Token 普通输入 2 元、输出 10 元、缓存命中输入 0.10 元，VIP 八折。缓存部分不会重复收普通输入费。上游用量可能包含系统上下文与推理 Token，不能只按可见文本字数估算；以最终消费记录为准，详见 [计费说明](/pricing)。
+    不同文本型号有各自价格。GPT-6.1 Sol 每百万 Token 普通输入 2 元、输出 10 元、缓存读取 0.10 元；新 GPT 还存在 272,000 输入 Token 分档，Claude Haiku 5.5 存在 100,000 输入 Token 分档，VIP 八折。缓存部分不会重复收普通输入费。上游用量可能包含系统上下文与推理 Token，不能只按可见文本字数估算；以最终消费记录为准，详见 [计费说明](/pricing)。
   </Accordion>
   <Accordion title="为什么相同提示词生成的图片差别很大？">
     生图具有随机性，宽泛的风格描述也可能产生不同解释。请明确主体、构图、画风、颜色与文字要求。不同模型的单张输出不能直接作为固定风格或质量排名的依据。
@@ -57,5 +57,11 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
   </Accordion>
   <Accordion title="Wan 视频用哪个接口？">
     使用 POST /v1/videos 创建，查询和下载路径与 Seedance 相同。支持的三个型号及限制见 [视频模型](/models/video-models)，暂不接受参考视频。付费生成与下载尚待实测。
+  </Accordion>
+  <Accordion title="新增 Claude 和 GPT 型号在哪里查看？">
+    当前公开目录共 32 个模型，本次补充 9 个 Claude 和 5 个 GPT 文本型号。完整 ID、接口和验证范围见 [模型目录](/models/overview)。Claude 提供 Messages 和 Chat 两种入口；五个新 GPT 的 Responses 等扩展能力需另行联调。
+  </Accordion>
+  <Accordion title="缓存读取、缓存写入和长上下文怎么收费？">
+    先按总输入上下文选择档位，再对各独立 Token 类别使用对应价格，不能把缓存又重复算入普通输入。阈值是精确的 272,000 或 100,000 Token，不是以 1024 换算的 K；超过阈值后整次请求用高档，不仅对超出部分加价。完整价格见 [计费说明](/pricing)。
   </Accordion>
 </AccordionGroup>

@@ -61,3 +61,7 @@ export VIZLUMA_BASE_URL="https://api.vizluma.online/v1"
 | 浏览器登录会话 | 控制台页面访问 | 否 |
 
 API Key 的账号余额、Key 额度、有效期、模型白名单和 IP 限制可能分别影响可用性。先通过 [模型列表](/api-reference/models) 核对可见范围，再对照 [错误处理](/api-reference/errors) 检查失败原因。获取 Key 的步骤见 [账号与 Key](/getting-started/enterprise-access)。
+
+## Claude Messages 请求头
+
+[Claude Messages](/api-reference/messages) 示例使用 `x-api-key: YOUR_API_KEY` 与 `anthropic-version: 2023-06-01`；其余 API 示例继续使用 Bearer 方式。使用同一枚本站 Key，但不要在同一请求中放入两枚不同凭证。模型列表中的 Claude、Terra 或其他新型号仍受账户白名单约束。

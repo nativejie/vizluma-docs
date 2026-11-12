@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Vizluma API",
-  "description": "Vizluma 开发文档：快速开始、文本与图像生成、视频任务、SDK 集成和 API 参考",
+  "description": "Vizluma 开发文档：GPT、Claude、图像与视频模型、SDK 接入、异步任务和计费参考",
   "logo": {
     "light": "/images/vizluma-symbol-v1.png",
     "dark": "/images/vizluma-symbol-v1.png",
@@ -95,7 +95,9 @@
           {
             "group": "文本",
             "pages": [
-              "models/gpt-6-1-sol"
+              "models/gpt-text",
+              "models/gpt-6-1-sol",
+              "models/claude"
             ]
           },
           {
@@ -129,7 +131,8 @@
             "group": "文本接口",
             "pages": [
               "api-reference/chat-completions",
-              "api-reference/responses"
+              "api-reference/responses",
+              "api-reference/messages"
             ]
           },
           {

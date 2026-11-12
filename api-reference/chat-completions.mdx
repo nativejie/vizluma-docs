@@ -5,13 +5,13 @@ api: "POST /v1/chat/completions"
 playground: "none"
 ---
 
-适用于已有 `messages` 对话历史、聊天机器人和文本生成应用。当前文档示例使用 `gpt-6.1-sol`，模型权限以你的 API Key 为准。
+适用于已有 `messages` 对话历史、聊天机器人和文本生成应用。当前基础示例使用 `gpt-6.1-sol`；新增 GPT 与 Claude 完整 ID 见 [模型目录](/models/overview)，模型权限以你的 API Key 为准。
 
 ## 请求参数
 
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `model` | string | 是 | 完整模型 ID：`gpt-6.1-sol` |
+| `model` | string | 是 | 已开通的完整模型 ID，本例 `gpt-6.1-sol` |
 | `messages` | array | 是 | 消息列表，按对话顺序传入 |
 | `messages[].role` | string | 是 | 基础文本使用 `system`、`user`、`assistant` |
 | `messages[].content` | string | 是 | 对应角色的文本内容 |
@@ -80,3 +80,7 @@ curl --fail-with-body --silent --show-error --max-time 120 \
 将 `stream` 设为 `true`，流式用量选项设为 `{"include_usage":true}`。逐个读取 `choices[].delta.content`，识别 `[DONE]`，详见 [流式处理](/guides/streaming)。
 
 文本按 Token 结算，推理 Token 和缓存输入说明见 [计费说明](/pricing)。连接中断不能当作“未执行”，也没有图片任务式的续传或幂等承诺。
+
+## 其他文本模型
+
+GPT 新型号见 [GPT 文本模型](/models/gpt-text)；Claude 可通过本接口的兼容格式调用，示例使用 `max_tokens`，不要直接套用 GPT 的 `reasoning_effort`。保留 Anthropic 消息格式时使用 [Messages](/api-reference/messages)。模型目录中的配置声明不代表新型号已完成真实付费调用或所有流式参数验收。

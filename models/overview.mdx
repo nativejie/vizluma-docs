@@ -5,11 +5,29 @@ description: "按任务类型选择模型，确认接口、规格与账户权限
 
 选择模型时先确定任务类型，再复制完整模型 ID。模型目录描述服务配置范围，实际可调用模型由账户、Key 白名单和可用额度共同决定；可通过 [查询模型列表](/api-reference/models) 核对当前 Key。
 
+截至 **2026-11-12**，线上公开目录共 **32 个模型**：15 个文本、8 个图像、9 个视频。本次新增 9 个 Claude 与 5 个 GPT 文本型号；模型数会随配置变化，实时权限请以当前 Key 查询为准。
+
 ## 文本模型
 
-| 模型 ID | 接口 | 接入指南 |
+| 模型 ID | 公开接入入口 | 接入指南 |
 | --- | --- | --- |
-| `gpt-6.1-sol` | Chat Completions / Responses；基础文本与 SSE | [文本模型](/models/gpt-6-1-sol) |
+| `gpt-6.1-sol` | Chat Completions / Responses 已有基础联调 | [GPT 文本](/models/gpt-text) |
+| `gpt-6.1-terra` | Chat Completions | [GPT 文本](/models/gpt-text) |
+| `gpt-6-astra` | Chat Completions | [GPT 文本](/models/gpt-text) |
+| `gpt-6-sol` | Chat Completions | [GPT 文本](/models/gpt-text) |
+| `gpt-5.6-terra` | Chat Completions | [GPT 文本](/models/gpt-text) |
+| `gpt-5.6-sol` | Chat Completions | [GPT 文本](/models/gpt-text) |
+| `claude-opus-4-8` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-opus-5` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-opus-5-5` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-sonnet-5` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-sonnet-5-5` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-fable-5` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-fable-5-1` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-fable-5-2` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+| `claude-haiku-5-5` | Messages / Chat Completions | [Claude 透传保真](/models/claude) |
+
+新增型号已配置上线，真实付费调用仍待实测；目录声明的入口不等于全部协议和扩展参数已完成验收。完整缓存与长上下文价格见 [计费说明](/pricing)。
 
 ## 图像模型
 

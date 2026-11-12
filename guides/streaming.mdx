@@ -61,3 +61,7 @@ Responses 不能依赖 Chat 的 `[DONE]` 来判断成功。
 关闭业务代理的响应缓冲，按业务设置空闲和总等待上限。`curl --no-buffer` 只控制 curl 本地输出，不会修改你的代理配置。
 
 已显示一部分内容后断开，不能从头自动重发并当作续传；新的生成可能再次收费。见 [耗时与重试](/guides/timeouts-and-retries)。
+
+## Claude Messages 流式
+
+Claude 的 [Messages](/api-reference/messages) 使用独立 SSE 事件。文本增量可从 `content_block_delta` 中的 `delta.type=text_delta` 读取，`message_delta` 可能携带结束原因和用量，`message_stop` 标记消息结束；同时处理错误事件和提前断流。不能复用 Chat 或 Responses 的结束条件。该格式说明不代表九个新型号均已完成真实流式验收。

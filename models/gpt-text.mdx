@@ -1,0 +1,47 @@
+---
+title: "GPT 文本模型"
+description: "GPT-5.6、GPT-6 和 GPT-6.1 的完整模型 ID、接口与上下文价格分档。"
+---
+
+## 模型清单
+
+以下六个型号已列入 2026-11-12 的线上公开模型目录。使用完整 ID，不要省略小数点、连字符或系列后缀。
+
+| 模型 ID | 接入入口 | 配置状态 |
+| --- | --- | --- |
+| `gpt-6.1-sol` | [Chat Completions](/api-reference/chat-completions) | 已配置；基础文本与 SSE 已有联调 |
+| `gpt-6.1-terra` | [Chat Completions](/api-reference/chat-completions) | 已配置；真实付费调用待实测 |
+| `gpt-6-astra` | [Chat Completions](/api-reference/chat-completions) | 已配置；真实付费调用待实测 |
+| `gpt-6-sol` | [Chat Completions](/api-reference/chat-completions) | 已配置；真实付费调用待实测 |
+| `gpt-5.6-terra` | [Chat Completions](/api-reference/chat-completions) | 已配置；真实付费调用待实测 |
+| `gpt-5.6-sol` | [Chat Completions](/api-reference/chat-completions) | 已配置；真实付费调用待实测 |
+
+
+## 最小 Chat 请求
+
+先设置 [环境变量](/getting-started/authentication)。本例使用新型号 `gpt-6.1-terra`，可替换为本页其他完整 ID。
+
+```bash gpt-text.sh
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${VIZLUMA_BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-6.1-terra","messages":[{"role":"user","content":"Reply with exactly OK."}],"max_completion_tokens":128,"stream":false}' \
+  -o chat.json
+```
+
+读取 `choices[].message.content`，并检查完成原因。输出上限也可能包含推理用量，128 仅用于短回复联调，不适合直接套用于复杂任务。
+
+## 接口与能力范围
+
+公开目录为六个型号声明了 Chat Completions 入口。`gpt-6.1-sol` 另已有 [Responses](/api-reference/responses) 基础文本与 SSE 联调；其余五个新型号的 Responses、工具、多模态、结构化输出、推理档位及最大上下文能力均需按账户验证，不能由价格目录推断已经通过实测。
+
+## 上下文分档
+
+除 `gpt-6.1-sol` 外，本页五个新型号按总输入上下文 **272,000 Token** 分档，等于边界使用较低档，大于边界使用较高档。总输入包含缓存读取与缓存创建，不是仅非缓存输入，也不包含输出。
+
+分档后使用对应档位计算整次请求的各类 Token 费用，不是只有超过边界的部分加价。价格分界不代表模型支持的最大上下文长度。完整输入、输出、缓存读写和 VIP 价格规则见 [计费说明](/pricing#gpt-文本价格)。
+
+## 迁移已有 Sol 应用
+
+先查询当前 Key 的 [可用模型](/api-reference/models)，再替换 `model`。保留自己已验证的请求字段，核对实际输出、用量和费用后放量。新型号已配置上线，不等于全部参数或所有协议完成真实调用验收。

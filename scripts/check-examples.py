@@ -416,5 +416,49 @@ class AsyncWorkflowExamples(unittest.TestCase):
         self.assertEqual(waits, 0)
 
 
+class TextModelExamples(unittest.TestCase):
+    """Validate the published shell invocation without contacting a model."""
+
+    def test_new_model_shell_examples_preserve_path_headers_and_json(self):
+        examples = (
+            ("models/gpt-text.mdx", "gpt-text.sh", "/chat/completions", "gpt-6.1-terra", "max_completion_tokens", False),
+            ("models/claude.mdx", "claude-chat.sh", "/chat/completions", "claude-sonnet-5-5", "max_tokens", False),
+            ("api-reference/messages.mdx", "claude-messages.sh", "/messages", "claude-sonnet-5-5", "max_tokens", True),
+        )
+        with tempfile.TemporaryDirectory(prefix="vizluma-text-docs-") as work:
+            folder = Path(work)
+            capture = folder / "arguments.json"
+            curl = folder / "curl"
+            curl.write_text("#!" + sys.executable + "\nimport json,os,sys\n"
+                            "open(os.environ['VIZLUMA_CAPTURE'],'w').write(json.dumps(sys.argv[1:]))\n")
+            curl.chmod(0o700)
+            env = os.environ | {
+                "PATH": work + os.pathsep + os.environ["PATH"],
+                "VIZLUMA_API_KEY": "fixture-not-a-real-key",
+                "VIZLUMA_BASE_URL": "https://fixture.invalid/v1/",
+                "VIZLUMA_CAPTURE": str(capture),
+            }
+            for page, title, endpoint, model, token_field, native in examples:
+                with self.subTest(page=page):
+                    match = re.search(r"^```bash " + re.escape(title) + r"\n(.*?)^```",
+                                      (ROOT / page).read_text(), re.M | re.S)
+                    self.assertIsNotNone(match)
+                    result = subprocess.run(["bash", "-c", match[1]], cwd=work, env=env,
+                                            capture_output=True, text=True, timeout=10)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    args = json.loads(capture.read_text())
+                    self.assertIn("https://fixture.invalid/v1" + endpoint, args)
+                    self.assertIn("x-api-key: fixture-not-a-real-key" if native else
+                                  "Authorization: Bearer fixture-not-a-real-key", args)
+                    if native:
+                        self.assertIn("anthropic-version: 2023-06-01", args)
+                    body = json.loads(args[args.index("-d") + 1])
+                    self.assertEqual(body, {
+                        "model": model, token_field: 128, "stream": False,
+                        "messages": [{"role": "user", "content": "Reply with exactly OK."}],
+                    })
+                    self.assertNotIn(env["VIZLUMA_API_KEY"], result.stdout + result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

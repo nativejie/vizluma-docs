@@ -31,6 +31,23 @@ curl --fail-with-body --silent --show-error --max-time 120 \
 读取 `choices[0].message.content`。完整字段见 [Chat Completions](/api-reference/chat-completions)，使用流式时见 [SSE](/guides/streaming)。
 
 </Tab>
+<Tab title="Claude 消息">
+
+先使用已开通的 Claude Key 权限，以下调用采用 Anthropic 消息格式：
+
+```bash
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${VIZLUMA_BASE_URL%/}/messages" \
+  -H "x-api-key: $VIZLUMA_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet-5-5","max_tokens":128,"messages":[{"role":"user","content":"Reply with exactly OK."}],"stream":false}' \
+  -o claude-message.json
+```
+
+读取 `content[]` 中 `type=text` 的块。完整参数见 [Messages](/api-reference/messages)，型号与真实调用验证范围见 [Claude](/models/claude)。
+
+</Tab>
 <Tab title="生成图片">
 
 ```bash
@@ -82,7 +99,7 @@ curl --fail-with-body --silent --show-error --max-time 60 \
 <CardGroup cols={2}>
   <Card title="SDK 接入" icon="code" href="/guides/openai-sdk">Python、Node.js SDK 与超时、重试配置。</Card>
   <Card title="图片编辑" icon="image" href="/api-reference/images-edits">上传文件或传入可下载的参考图链接。</Card>
-  <Card title="选择模型" icon="layer-group" href="/models/overview">GPT Image、Gemini、Sol、Seedance 与 Wan 的接口差异。</Card>
+  <Card title="选择模型" icon="layer-group" href="/models/overview">GPT、Claude、GPT Image、Gemini、Seedance 与 Wan 的接口差异。</Card>
   <Card title="排查问题" icon="wrench" href="/guides/troubleshooting">定位参数、权限、限流、任务和下载问题。</Card>
 </CardGroup>
 

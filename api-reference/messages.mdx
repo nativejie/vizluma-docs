@@ -1,0 +1,60 @@
+---
+title: "Claude Messages"
+description: "使用 Anthropic 消息格式调用 Claude，区分消息块、用量与流式事件。"
+api: "POST /v1/messages"
+playground: "none"
+---
+
+用于 [Claude 透传保真](/models/claude) 模型。Base URL 与其他模型一致，接口是 `POST /v1/messages`，不是 `/messages` 或 `/v1/chat/completions` 的响应结构。
+
+## 请求参数
+
+| 字段 | 类型 | 必填 | 基础文本说明 |
+| --- | --- | --- | --- |
+| `model` | string | 是 | 复制 [Claude 清单](/models/claude) 中的完整 ID |
+| `max_tokens` | integer | 是 | 正整数输出上限，本例 128 |
+| `messages` | array | 是 | 按对话顺序传入消息 |
+| `messages[].role` | string | 是 | `user` 或 `assistant` |
+| `messages[].content` | string | 是 | 本页最小文本示例；复杂消息块需另行联调 |
+| `system` | string | 否 | 顶层系统指令，不在 messages 内添加 system 角色 |
+| `stream` | boolean | 否 | `false` 为完整 JSON，`true` 为 SSE |
+
+## 请求示例
+
+```bash claude-messages.sh
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${VIZLUMA_BASE_URL%/}/messages" \
+  -H "x-api-key: $VIZLUMA_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet-5-5","max_tokens":128,"messages":[{"role":"user","content":"Reply with exactly OK."}],"stream":false}' \
+  -o claude-message.json
+```
+
+`x-api-key` 使用本站 API Key，不是其他平台 Key。此请求头用于 Messages 协议；其他接口继续使用相应文档的 Bearer 写法，不要同时放入两枚不同凭证。`2023-06-01` 是本站适配器现有默认协议版本，本例显式传入；不据此承诺支持全部新版本功能。
+
+## 响应结构
+
+以下为精简结构示意：
+
+```json
+{
+  "id": "msg_example",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [{"type": "text", "text": "OK"}],
+  "stop_reason": "end_turn",
+  "usage": {"input_tokens": 12, "output_tokens": 2}
+}
+```
+
+遍历 `content` 选择 `type=text` 的块。`stop_reason=max_tokens` 表示达到输出上限，按可能不完整处理。缓存用量可能独立报告，不能用可见回复字数对账，见 [计费说明](/pricing)。
+
+## 流式处理
+
+将 `stream` 改为 `true` 并给 curl 增加 `--no-buffer`。按事件类型读取文本增量，识别 `message_stop`；不能沿用 Chat 的 `[DONE]` 或 Responses 的 `response.completed` 作为结束条件。
+
+错误事件和中途断连需要单独处理；流式格式说明不等于九个型号都已完成真实流式验收。工具、thinking、缓存控制、多模态和 beta 请求头请先验证具体型号支持情况。本站未将 `/v1/messages/count_tokens` 列为开放能力。
+
+协议结构参考 [Anthropic Messages](https://platform.claude.com/docs/en/api/messages)；本站型号、版本、价格和验证范围以本站说明为准。

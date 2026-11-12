@@ -1,0 +1,51 @@
+---
+title: "Claude 透传保真"
+description: "九个 Claude 模型的完整调用 ID、Messages 和 Chat 协议入口。"
+---
+
+## 模型清单
+
+2026-11-12 线上公开目录已配置以下九个型号，统一显示 **Claude 透传保真**，支持的入口为 Anthropic Messages 与 OpenAI 格式 Chat Completions。实际调用仍取决于 Key 权限与额度。
+
+| 系列 | 完整模型 ID |
+| --- | --- |
+| Opus | `claude-opus-4-8` |
+| Opus | `claude-opus-5` |
+| Opus | `claude-opus-5-5` |
+| Sonnet | `claude-sonnet-5` |
+| Sonnet | `claude-sonnet-5-5` |
+| Fable | `claude-fable-5` |
+| Fable | `claude-fable-5-1` |
+| Fable | `claude-fable-5-2` |
+| Haiku | `claude-haiku-5-5` |
+
+
+## 选择协议
+
+| 你的应用 | 接入方式 | 读取文本 |
+| --- | --- | --- |
+| 原本使用 Anthropic 消息格式 | `POST /v1/messages` | `content[]` 中 `type=text` 的 `text` |
+| 已有 OpenAI 格式聊天应用 | `POST /v1/chat/completions` | `choices[].message.content` |
+
+希望使用 Anthropic 格式的消息块与事件时，优先使用 [Messages API](/api-reference/messages)。Chat 入口涉及协议转换，不应将“透传保真”标签理解为所有字段、请求头或原始字节都不经处理。
+
+## Chat 兼容示例
+
+```bash claude-chat.sh
+curl --fail-with-body --silent --show-error --max-time 120 \
+  "${VIZLUMA_BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer $VIZLUMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet-5-5","messages":[{"role":"user","content":"Reply with exactly OK."}],"max_tokens":128,"stream":false}' \
+  -o claude-chat.json
+```
+
+准备环境变量见 [鉴权与地址](/getting-started/authentication)。原生协议的完整请求、响应与流式事件见 [Messages 参考](/api-reference/messages)。不要给模型名添加 `-vip` 或供应线路后缀。
+
+## 价格与缓存
+
+按非缓存输入、输出、缓存读取、5 分钟与 1 小时缓存写入分别计价。Haiku 5.5 按总输入 100,000 Token 分档，其他本页型号当前为单档。人民币单价见 [Claude 价格表](/pricing#claude-文本价格)，不能统一假设缓存读取是输入价的某个固定百分比。
+
+## 当前验证范围
+
+九个型号已配置启用，公开模型目录、价格与接口声明已核对；真实付费调用、各型号流式、缓存命中、工具调用、图片输入及扩展请求头仍待逐项实测。本文提供基础接入格式，不将目录可见等同于所有官方能力已支持。

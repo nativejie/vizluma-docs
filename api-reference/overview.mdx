@@ -3,7 +3,7 @@ title: "API 总览"
 description: "按任务选择端点、响应形式和结果读取位置。"
 ---
 
-统一 API Base URL 为 `https://api.vizluma.online/v1`。所有下表请求都使用 `Authorization: Bearer YOUR_API_KEY`；JSON 创建请求使用 `Content-Type: application/json`，文件上传由客户端生成 multipart boundary。
+统一 API Base URL 为 `https://api.vizluma.online/v1`。除 Claude Messages 可使用 `x-api-key` 外，下表请求使用 `Authorization: Bearer YOUR_API_KEY`；JSON 创建请求使用 `Content-Type: application/json`，文件上传由客户端生成 multipart boundary。
 
 ## 端点速查
 
@@ -11,6 +11,7 @@ description: "按任务选择端点、响应形式和结果读取位置。"
 | --- | --- | --- |
 | 可用模型 | `GET /v1/models` | `data[].id` |
 | 文本对话 | `POST /v1/chat/completions` | `choices[].message.content` |
+| Claude 消息 | `POST /v1/messages` | `content[]` 中 `type=text` 的 `text` |
 | Responses | `POST /v1/responses` | `output[].content[]` 中的 `output_text` |
 | 生成图片 | `POST /v1/images/generations` | 同步 `data[]`；异步顶层任务 `id` |
 | 编辑图片 | `POST /v1/images/edits` | 与图片生成相同 |

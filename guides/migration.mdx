@@ -11,9 +11,9 @@ description: "把已有 OpenAI 格式应用迁移到 Vizluma，并检查参数�
 | --- | --- |
 | API Base URL | `https://api.vizluma.online/v1` |
 | API Key | 你的 Vizluma API Key |
-| 文本模型 ID | `gpt-6.1-sol` |
+| 文本模型 ID | 从 [GPT](/models/gpt-text) 或 [Claude](/models/claude) 清单复制 |
 | 图片模型 ID | 从 [模型目录](/models/overview) 复制完整 ID |
-| 文本协议 | Chat Completions 或 Responses，依客户端实际能力选择 |
+| 文本协议 | 按型号选择 Chat、已验证的 Responses 或 Claude Messages |
 | 自动重试 | 首次接入关闭，之后按接口设计策略 |
 
 ## SDK 和 HTTP 的区别
@@ -47,3 +47,7 @@ description: "把已有 OpenAI 格式应用迁移到 Vizluma，并检查参数�
 5. 在控制台核对用量与费用，再逐步放量。
 
 第三方聊天工具会读取你的 Key、提示词和结果，只在你信任的本地或自建环境配置。前端产品请通过自己的后端访问 Vizluma。接口参数以 [API 总览](/api-reference/overview) 为准。
+
+## Anthropic 格式客户端
+
+Messages 的完整端点为 `https://api.vizluma.online/v1/messages`。自动追加 `/v1/messages` 的 SDK 或客户端应配置根地址 `https://api.vizluma.online`，避免重复 `/v1`。Key 使用本站 Key，模型使用 [Claude 清单](/models/claude) 的完整 ID；不要把 Chat 的消息结构和参数直接当作 Anthropic 原生消息。具体客户端、工具和 beta 功能需独立联调。
