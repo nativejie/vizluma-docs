@@ -1,0 +1,92 @@
+---
+title: "多轮对话完整实践"
+description: "用 Python 标准库管理上下文、解析完整回复并保存每轮记录。"
+---
+
+这个例子完成两轮文本请求：读取配置、携带历史、检查结束原因、保存回复与用量。不依赖第三方 SDK，使用已有基础联调的 `gpt-6.1-sol`。
+
+## 准备与运行
+
+需要 Python 3.10+，先配置 [环境变量](/getting-started/authentication)，保存下方脚本为 `conversation.py`：
+
+```bash
+python3 conversation.py "用一句话介绍杭州" "再推荐一种当地小吃"
+```
+
+这会发起两次文本创建请求，按实际用量收费。第二次携带第一轮历史，输入量通常增加。
+
+## 完整脚本
+
+```python conversation.py
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+key = os.environ.get("VIZLUMA_API_KEY")
+if not key or key == "YOUR_API_KEY":
+    raise SystemExit("请先配置 VIZLUMA_API_KEY")
+questions = sys.argv[1:]
+if not 1 <= len(questions) <= 2 or any(not text.strip() for text in questions):
+    raise SystemExit('用法：python3 conversation.py "问题" ["追问"]，最多两轮')
+base = os.environ.get("VIZLUMA_BASE_URL", "https://api.vizluma.online/v1").rstrip("/")
+messages = [{"role": "system", "content": "请简洁、准确地回答用户问题"}]
+turns = []
+
+for question in questions:
+    proposed = messages + [{"role": "user", "content": question}]
+    request = urllib.request.Request(
+        base + "/chat/completions",
+        data=json.dumps({
+            "model": "gpt-6.1-sol", "messages": proposed,
+            "reasoning_effort": "low", "max_completion_tokens": 512, "stream": False,
+        }).encode("utf-8"),
+        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            result = json.load(response)
+    except urllib.error.HTTPError as error:
+        raise SystemExit(f"HTTP {error.code}，本次未加入对话历史；请核对原请求")
+    except (urllib.error.URLError, TimeoutError):
+        raise SystemExit("网络结果不确定，停止发送后续轮次，请先核对调用记录")
+    choices = result.get("choices")
+    if result.get("error") or not isinstance(choices, list) or not choices:
+        raise SystemExit("未获得有效回复，停止后续轮次")
+    choice = choices[0]
+    content = choice.get("message", {}).get("content")
+    if choice.get("finish_reason") != "stop" or not isinstance(content, str) or not content.strip():
+        raise SystemExit("回复为空或未完整结束，保留已完成的历史并核查")
+    messages = proposed + [{"role": "assistant", "content": content}]
+    turns.append({"request_id": result.get("id"), "usage": result.get("usage", {})})
+    Path("conversation.json").write_text(
+        json.dumps({"messages": messages, "turns": turns}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    print(content)
+```
+
+## 保存时机与业务结果
+
+| 信息 | 保存时机 | 原因 |
+| --- | --- | --- |
+| 用户问题和助手回复 | 回复完整结束后 | 不把失败或半截回复加入下一轮 |
+| 请求 ID | 每轮成功后 | 关联业务请求与排障材料 |
+| usage | 每轮成功后 | 展示本轮用量，对账仍核对消费记录 |
+| API Key | 不写入对话文件 | 从服务端环境变量或密钥系统提供 |
+
+`conversation.json` 含业务文本，请按自己的数据保留要求保存，不未经处理公开上传。脚本失败时不会自动重复请求。
+
+## 控制历史与输出
+
+生产应用应限制历史轮数、保存必要摘要，或在输入达到业务预算时新开会话。减小输出上限不会减少已经携带的历史输入。
+
+推理也可能占用输出额度。遇到 `finish_reason=length` 应标记结果不完整，而不是从头自动重发并当成免费续传。
+
+## 流式和模型切换
+
+流式改用 SSE 解析器，正确识别结束事件，见 [流式处理](/guides/streaming)。其他 GPT 型号见 [模型清单](/models/gpt-text)。
+
+Claude 可使用 [兼容示例](/models/claude) 或 [Messages](/api-reference/messages)，不要直接复制 GPT 的 `reasoning_effort`。新型号真实调用范围以模型页说明为准。

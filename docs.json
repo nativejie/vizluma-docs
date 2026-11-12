@@ -32,6 +32,9 @@
     },
     "playground": {
       "display": "none"
+    },
+    "examples": {
+      "autogenerate": false
     }
   },
   "navigation": {
@@ -45,13 +48,15 @@
               "index",
               "getting-started/enterprise-access",
               "quickstart",
-              "getting-started/authentication"
+              "getting-started/authentication",
+              "guides/markdown"
             ]
           },
           {
             "group": "开发与集成",
             "pages": [
               "guides/openai-sdk",
+              "guides/text-chat",
               "guides/client-examples",
               "guides/migration",
               "guides/streaming"
@@ -61,6 +66,7 @@
             "group": "图像工作流",
             "pages": [
               "guides/async-images",
+              "guides/image-editing",
               "guides/image-results",
               "guides/sizes-and-quality"
             ]
@@ -160,5 +166,12 @@
         ]
       }
     ]
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view"
+    ],
+    "display": "header"
   }
 }

@@ -1,0 +1,97 @@
+---
+title: "上传改图完整实践"
+description: "从本地 PNG 上传、稳定业务键，到保存编辑结果和恢复查询。"
+---
+
+适合商品图修改、背景调整和参考图编辑。本例使用本地 PNG 与编辑指令，同步等待响应，再保存实际图片。
+
+## 业务步骤
+
+1. 准备有使用授权的参考图。
+2. 为这次业务保存稳定的 `Idempotency-Key`。
+3. 使用 multipart 上传，交给客户端生成 boundary。
+4. 保存响应，下载图片；网络不确定时核对原任务。
+
+## 准备与运行
+
+需要 Node.js 20+，在自己的工作目录准备 `input.png`，先配置 [API 环境变量](/getting-started/authentication)：
+
+```bash
+export IDEMPOTENCY_KEY="your-unique-edit-business-id"
+node edit-file.mjs input.png
+```
+
+新业务使用新键；同一业务重试保留原键、参考图和参数。脚本不自行重试。
+
+## 完整 Node.js 示例
+
+```javascript edit-file.mjs
+import { readFile, stat, writeFile } from "node:fs/promises";
+import { basename } from "node:path";
+
+const key = process.env.VIZLUMA_API_KEY;
+const businessKey = process.env.IDEMPOTENCY_KEY;
+const file = process.argv[2];
+if (!key || key === "YOUR_API_KEY" || !file) throw new Error("请配置 API Key 并提供 PNG 文件路径");
+if (!businessKey || Buffer.byteLength(businessKey) > 128 || /[\r\n]/.test(businessKey)) {
+  throw new Error("请配置不超过 128 字节且不含换行的 IDEMPOTENCY_KEY");
+}
+const info = await stat(file);
+if (!info.isFile() || info.size > 20 * 1024 * 1024) throw new Error("参考图必须是 20 MiB 以内的文件");
+const bytes = await readFile(file);
+if (!bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+  throw new Error("本示例仅接收 PNG；请先转换实际文件格式");
+}
+const form = new FormData();
+form.set("model", "gpt-image-2");
+form.set("prompt", "为参考图主体添加一条红色围巾，保持主体外观、姿态和背景，不添加文字");
+form.set("size", "1024x1024");
+form.set("n", "1");
+form.set("response_format", "url");
+form.set("image", new Blob([bytes], { type: "image/png" }), basename(file));
+const base = (process.env.VIZLUMA_BASE_URL ?? "https://api.vizluma.online/v1").replace(/\/+$/, "");
+try {
+  const response = await fetch(base + "/images/edits", {
+    method: "POST", body: form,
+    headers: { Authorization: "Bearer " + key, "Idempotency-Key": businessKey },
+    signal: AbortSignal.timeout(600_000),
+  });
+  const taskId = response.headers.get("x-image-task-id");
+  if (taskId) await writeFile("edit-task-meta.json", JSON.stringify({ id: taskId, businessKey }, null, 2));
+  if (!response.ok) throw new Error("HTTP " + response.status + "，请核对原任务与调用记录");
+  const result = await response.json();
+  if (result.error || !Array.isArray(result.data) || !result.data.length) throw new Error("没有有效图片结果");
+  await writeFile("edit.json", JSON.stringify(result, null, 2));
+  console.log("编辑响应已保存至 edit.json，请继续保存图片字节");
+} catch (error) {
+  console.error(error.message);
+  console.error("保留原业务键和参考图，不要换新键自动重新编辑");
+  process.exitCode = 1;
+}
+```
+
+PNG 签名只用于示例识别，不是完整图片安全检查。业务服务还应校验可解码性、像素与上传权限。
+
+## 保存图片
+
+取得 [图片结果与保存](/guides/image-results) 中的 `save_images.py`：
+
+```bash
+python3 save_images.py edit.json
+```
+
+`edit.json` 是响应，不是图片本身。保存脚本从 URL 或 Base64 取得图片字节，不携带模型 Key 下载图片。
+
+## 超时后怎么恢复
+
+若保存了 `edit-task-meta.json`，使用其中 `id` 通过 [图片任务接口](/api-reference/image-tasks) 查询原任务。
+
+没有取得 ID 时，如需重试原提交，沿用原业务键、图片和参数。`409` 表示同键内容不一致；`UNKNOWN` 是结果待确认。生成成功但下载失败时只重新下载。
+
+要立即返回任务 ID，增加 `Prefer: respond-async` 并按 [异步示例](/guides/async-images) 查询。异步返回的是任务对象，不能直接按本例同步图片结果解析。
+
+## 按型号适配
+
+本例使用 `gpt-image-2` 单张 PNG。其他 GPT Image 先核对 [模型目录](/models/overview)；Gemini 的 `n` 固定为 1，分辨率及可选参数见 [Gemini](/models/gemini-image)。
+
+单张编辑成功不代表多参考图、所有格式和扩展参数都已验收。

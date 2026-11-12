@@ -1,0 +1,65 @@
+---
+title: "复制 Markdown 与 AI 对接"
+description: "复制整页、查看 Markdown 原文，或将文档交给开发工具阅读。"
+---
+
+## 复制整页
+
+在文档标题旁点击 **Copy page（复制页面）**，复制的是当前整页 Markdown，包括标题、正文、表格和代码。代码块右上角的复制按钮只复制该段代码，两者用途不同。
+
+菜单中的 **View as Markdown（查看 Markdown）** 打开本页 Markdown 内容。浏览器若阻止剪贴板访问，可先打开 Markdown 再手动选择并复制。
+
+## 直接打开 Markdown
+
+在页面路径末尾加上 `.md`：
+
+| 文档 | Markdown 原文 |
+| --- | --- |
+| 快速开始 | [quickstart.md](https://docs.vizluma.online/quickstart.md) |
+| 文本对话 | [chat-completions.md](https://docs.vizluma.online/api-reference/chat-completions.md) |
+| Seedance 视频 | [seedance-videos.md](https://docs.vizluma.online/api-reference/seedance-videos.md) |
+| Wan 视频 | [wan-videos.md](https://docs.vizluma.online/api-reference/wan-videos.md) |
+
+分享公开文档不需要带 API Key 或控制台登录参数。
+
+## 下载到本地
+
+以下下载的是公开文档，不调用模型，不需要 Key：
+
+```bash
+curl --fail --silent --show-error --location \
+  https://docs.vizluma.online/api-reference/chat-completions.md \
+  --output chat-completions.md
+```
+
+也可对常规页面使用内容协商：
+
+```bash
+curl --fail --silent --show-error --location \
+  -H 'Accept: text/markdown' \
+  https://docs.vizluma.online/quickstart \
+  --output quickstart.md
+```
+
+## 交给 AI 或开发工具
+
+[llms.txt 文档索引](https://docs.vizluma.online/llms.txt) 用来发现站内页面。先定位接口，再阅读对应 `.md`；模型目录不能代替完整参数和错误规则。
+
+提供上下文时带上：
+
+1. 模型完整 ID、接口参考与鉴权说明。
+2. 请求参数、响应字段与解析方式。
+3. 异步任务或流式事件的结束和失败规则。
+4. 自己的语言、SDK 版本、超时和部署约束。
+
+不要粘贴真实 Key、Cookie、私密素材或业务机密。文档中的占位 Key 应由应用从服务端环境变量读取。
+
+## 常见问题
+
+| 现象 | 处理 |
+| --- | --- |
+| 复制后只有一段代码 | 使用标题旁 Copy page，而非代码块复制按钮 |
+| 看不到整页复制入口 | 刷新页面；窄窗口下查看标题附近菜单 |
+| 复制后粘贴为空 | 核对浏览器剪贴板权限，或打开 .md 原文 |
+| AI 写了本站没有的接口 | 同时提供接口页与模型页，要求按本站支持范围实现 |
+| 导出内容不带你的 Key | 公开文档不保存个人 Key，应由自己的应用配置 |

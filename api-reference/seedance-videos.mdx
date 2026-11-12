@@ -111,3 +111,114 @@ curl --fail --silent --show-error --max-time 600 \
 | `failed` | 停止轮询，保留错误与任务 ID，核对最终费用 |
 
 查询成功的 HTTP `200` 不等于生成已完成。未知状态应保留原任务并排查，不应自动创建新视频。视频不沿用图片 `Idempotency-Key` 的去重保证，也不使用 `/v1/images/tasks`。
+
+## Python 后台任务完整示例
+
+首次明确执行 `create` 才创建一次任务，随后轮询状态并下载；中断后使用 `resume` 和原 ID，不重新生成。需要 Python 3.10+ 和已有 API 环境变量。每个业务使用独立目录。
+
+```bash
+python3 seedance-task.py create
+```
+
+```python seedance-task.py
+import json
+import os
+import shutil
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+key = os.environ.get("VIZLUMA_API_KEY")
+if not key or key == "YOUR_API_KEY":
+    raise SystemExit("请先配置 VIZLUMA_API_KEY")
+args = sys.argv[1:]
+if args != ["create"] and not (len(args) == 2 and args[0] == "resume" and args[1]):
+    raise SystemExit("用法：python3 seedance-task.py create | resume 实际任务ID")
+base = os.environ.get("VIZLUMA_BASE_URL", "https://api.vizluma.online/v1").rstrip("/")
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+opener = urllib.request.build_opener(NoRedirect())
+
+
+def open_api(path, body=None):
+    headers = {"Authorization": "Bearer " + key}
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    try:
+        return opener.open(urllib.request.Request(base + path, data=data, headers=headers), timeout=60)
+    except urllib.error.HTTPError as error:
+        raise SystemExit(f"HTTP {error.code}，保留原任务ID核对，不自动创建替代任务")
+    except (urllib.error.URLError, TimeoutError):
+        raise SystemExit("网络结果不确定，请保留原任务ID与记录，不重复创建")
+
+
+if args[0] == "create":
+    with open_api("/videos", {
+        "model": "seedance-2.5-480p",
+        "prompt": "A cat walking slowly on a sunny beach, gentle waves in the background",
+        "duration": 5, "ratio": "16:9", "resolution": "480p",
+    }) as response:
+        created = json.load(response)
+    task_id = created.get("id")
+    if not isinstance(task_id, str) or not task_id:
+        raise SystemExit("未取得任务ID，先核对创建记录，不自动重发")
+    Path("seedance-task.json").write_text(json.dumps(created, ensure_ascii=False), encoding="utf-8")
+else:
+    task_id = args[1]
+print("任务ID：" + task_id, flush=True)
+path = "/videos/" + urllib.parse.quote(task_id, safe="")
+deadline = time.monotonic() + 600
+while time.monotonic() < deadline:
+    with open_api(path) as response:
+        task = json.load(response)
+    Path("seedance-status.json").write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
+    state = task.get("status")
+    if state == "completed":
+        output = Path("seedance.mp4")
+        if output.exists():
+            raise SystemExit("本地视频文件已存在，请先确认或更换独立工作目录")
+        partial = output.with_suffix(".mp4.part")
+        with open_api(path + "/content") as response:
+            content_type = response.headers.get("Content-Type", "").split(";", 1)[0].lower()
+            if not content_type.startswith("video/") and content_type != "application/octet-stream":
+                raise SystemExit("下载内容类型不是视频，请保留任务ID核查")
+            with partial.open("wb") as file:
+                shutil.copyfileobj(response, file)
+        if not partial.stat().st_size:
+            raise SystemExit("下载为空，保留任务ID后重试原文件下载")
+        partial.replace(output)
+        print("视频已保存为 " + str(output))
+        break
+    if state not in ("queued", "in_progress"):
+        raise SystemExit(f"任务状态 {state}，停止自动处理并核对原任务")
+    time.sleep(30)
+else:
+    raise SystemExit("本地等待结束，任务可能仍在运行；使用 resume 和原ID继续")
+```
+
+任务 ID 会立即打印并写入 `seedance-task.json`。600 秒本地等待结束或程序中断后，使用实际 ID：
+
+```bash
+python3 seedance-task.py resume video_replace_with_actual_id
+```
+
+`resume` 不发送创建请求。失败、未知状态和网络问题不会自动创建替代视频；下载只访问本站内容接口，并拒绝自动跟随重定向。
+
+| 本地文件 | 内容 |
+| --- | --- |
+| `seedance-task.json` | 首次创建返回的任务对象 |
+| `seedance-status.json` | 最近一次查询结果 |
+| `seedance.mp4.part` | 下载中的临时文件 |
+| `seedance.mp4` | 下载完成的视频文件 |
+
+创建响应未保存就断网时，先核对调用记录，不能因为没有本地文件就确认未创建。轮询和等待上限是客户端策略，不是生成时限保证；真实付费生成与素材能力仍以本页验证范围为准。

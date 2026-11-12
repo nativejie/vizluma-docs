@@ -7,6 +7,8 @@ playground: "none"
 
 使用与生成请求相同的 Bearer Key 查询。模型列表会受到账号分组、Key 模型白名单及服务配置影响，不需要调用付费生成接口。
 
+<RequestExample>
+
 ```bash models.sh
 curl --fail-with-body --silent --show-error \
   --connect-timeout 15 --max-time 30 \
@@ -14,6 +16,8 @@ curl --fail-with-body --silent --show-error \
   -H "Authorization: Bearer $VIZLUMA_API_KEY" \
   -o models.json
 ```
+
+</RequestExample>
 
 ## 响应
 

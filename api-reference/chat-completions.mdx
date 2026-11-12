@@ -26,6 +26,8 @@ playground: "none"
 
 先配置 [环境变量](/getting-started/authentication)。
 
+<RequestExample>
+
 ```bash chat.sh
 set -euo pipefail
 : "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
@@ -36,6 +38,8 @@ curl --fail-with-body --silent --show-error --max-time 120 \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-6.1-sol","messages":[{"role":"user","content":"Reply with exactly OK."}],"reasoning_effort":"low","max_completion_tokens":128,"stream":false}'
 ```
+
+</RequestExample>
 
 ## 成功响应
 
@@ -84,3 +88,16 @@ curl --fail-with-body --silent --show-error --max-time 120 \
 ## 其他文本模型
 
 GPT 新型号见 [GPT 文本模型](/models/gpt-text)；Claude 可通过本接口的兼容格式调用，示例使用 `max_tokens`，不要直接套用 GPT 的 `reasoning_effort`。保留 Anthropic 消息格式时使用 [Messages](/api-reference/messages)。模型目录中的配置声明不代表新型号已完成真实付费调用或所有流式参数验收。
+
+## 响应字段与完成原因
+
+| 字段 | 读取方式 | 应用处理 |
+| --- | --- | --- |
+| `id` | 返回的请求标识 | 保存以关联业务记录 |
+| `choices[].message.content` | 助手文本 | 判断实际内容，不显示整个 JSON |
+| `choices[].finish_reason` | 完成原因 | `stop` 按正常结束；`length` 按截断处理 |
+| `usage.prompt_tokens` | 输入用量 | 可能包含系统上下文与历史 |
+| `usage.completion_tokens` | 输出用量 | 可能包含推理，不只可见文本 |
+| `usage.total_tokens` | 返回的总量 | 展示用量，不能再重复计费 |
+
+错误对象、缺失 choices、空文本或未完整结束都应成为独立业务状态。完整上下文管理和记录保存见 [多轮对话实践](/guides/text-chat)。

@@ -21,7 +21,9 @@ Content-Type: application/json
 
 ## 请求示例
 
-```bash
+<RequestExample>
+
+```bash generate.sh
 curl --fail-with-body --silent --show-error \
   --connect-timeout 15 --max-time 600 \
   "$VIZLUMA_BASE_URL/images/generations" \
@@ -36,6 +38,8 @@ curl --fail-with-body --silent --show-error \
   }' \
   -o generation.json
 ```
+
+</RequestExample>
 
 环境变量设置见 [鉴权与地址](/getting-started/authentication)。
 

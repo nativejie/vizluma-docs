@@ -20,6 +20,8 @@ playground: "none"
 
 ## cURL
 
+<RequestExample>
+
 ```bash responses.sh
 set -euo pipefail
 : "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
@@ -30,6 +32,8 @@ curl --fail-with-body --silent --show-error --max-time 120 \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-6.1-sol","input":"Reply with exactly OK.","reasoning":{"effort":"low"},"max_output_tokens":128,"store":false,"stream":false}'
 ```
+
+</RequestExample>
 
 ## 成功响应
 
@@ -58,3 +62,30 @@ curl --fail-with-body --silent --show-error --max-time 120 \
 将 `stream` 改为 `true`，处理 `response.output_text.delta` 并检查 `response.completed`。`response.failed`、`response.incomplete`、错误事件及提前断连均需单独处理，详见 [流式处理](/guides/streaming)。
 
 `previous_response_id`、服务端历史检索、内置工具、文件和 WebSocket 不属于本页已确认的基础文本能力。需要多轮历史时，先按自己的应用与管理员确认支持的输入形式，或使用 [Chat Completions](/api-reference/chat-completions) 的消息列表。
+
+## 读取完整文本
+
+`output` 可能同时包含消息与其他类型，不保证首项就是文本。Python 按类型提取：
+
+```python
+texts = []
+for item in result.get("output", []):
+    if item.get("type") != "message":
+        continue
+    for part in item.get("content", []):
+        if part.get("type") == "output_text":
+            texts.append(part.get("text", ""))
+text = "".join(texts)
+if result.get("status") != "completed" or not text.strip():
+    raise ValueError("结果未完整完成或没有文本，请保留请求 ID 核对")
+```
+
+| 字段 | 用途 |
+| --- | --- |
+| `id` | 关联原请求，不是图片任务 ID |
+| `status` | 检查完成、失败或不完整 |
+| `output` | 按项和内容类型遍历 |
+| `usage.input_tokens` | 服务返回的输入用量 |
+| `usage.output_tokens` | 输出总量，可能包含推理 |
+
+不要将 Responses 交给 Chat 的 choices 解析器。原始 JSON 和 SDK 的聚合属性也不是同一结构。
