@@ -16,14 +16,14 @@
   line-height: 1.7;
 }
 
-#content-area .mdx-content h2 {
+#content-area .mdx-content h2:not(.not-prose) {
   font-size: 21px;
   line-height: 1.4;
   margin-top: 28px;
   margin-bottom: 14px;
 }
 
-#content-area .mdx-content h3 {
+#content-area .mdx-content h3:not(.not-prose) {
   font-size: 17px;
   line-height: 1.5;
   margin-top: 24px;
@@ -49,6 +49,35 @@
 #sidebar a {
   padding-top: 5px;
   padding-bottom: 5px;
+}
+
+/* Homepage shortcuts are navigation cards, not article section headings. */
+#content-area .home-shortcuts .card {
+  border-radius: 12px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+#content-area .home-shortcuts [data-component-part="card-content-container"] {
+  padding: 14px 16px;
+}
+
+#content-area .home-shortcuts [data-component-part="card-icon"],
+#content-area .home-shortcuts [data-component-part="card-icon"] > svg {
+  width: 20px;
+  height: 20px;
+}
+
+#content-area .home-shortcuts [data-component-part="card-title"] {
+  font-size: 15px;
+  line-height: 21px;
+  margin: 8px 0 0;
+}
+
+#content-area .home-shortcuts [data-component-part="card-content"] {
+  font-size: 13px;
+  line-height: 20px;
+  margin-top: 4px;
 }
 
 @media (max-width: 639px) {
