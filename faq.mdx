@@ -47,16 +47,16 @@ description: "关于企业开通、模型、结果保存、计费和生产接入
     当前不作不限并发或不限速承诺。请先确认企业调用限制，并在业务端使用有界队列。单次图片数量与同时请求数量是两个不同概念。
   </Accordion>
   <Accordion title="Seedance 视频怎么生成、如何计费？">
-    已配置六个按秒模型：Seedance 2.0 的720P／1080P／4K，以及2.5的480P／720P／1080P。通过 `POST /v1/videos` 创建、`GET /v1/videos/{id}` 查询、完成后 `GET /v1/videos/{id}/content` 下载。普通单价分别为每秒1／2.2／4.4元及0.8／1.4／3.8元，VIP八折。配置和本地测试已完成，尚未进行付费生成及下载实测，参见 [视频 API](/api-reference/videos) 和 [价格表](/pricing)。
+    已配置六个按秒模型：Seedance 2.0 的720P／1080P／4K，以及2.5的480P／720P／1080P。通过 `POST /v1/videos` 创建、`GET /v1/videos/{id}` 查询、完成后 `GET /v1/videos/{id}/content` 下载。普通单价分别为每秒1／2.2／4.4元及0.8／1.4／3.8元，VIP八折。配置和本地测试已完成，尚未进行付费生成及下载实测，参见 [Seedance API](/api-reference/seedance-videos) 和 [价格表](/pricing)。
   </Accordion>
   <Accordion title="图片编辑、文本和视频模型目前支持哪些？">
-    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本已开放 `gpt-6.1-sol` 的基础 Chat Completions／Responses 及 SSE，详见 [文本接入](/models/gpt-6-1-sol)。视频模型及验收边界见 [视频模型](/models/video-models)。未列出的模型或扩展能力仍需另行确认，不因文档预留分类而自动可用。
+    请以正式开通清单为准。图片编辑已开放经过验证的链接／文件上传方式，详见 [编辑教程](/api-reference/images-edits)；文本已开放 `gpt-6.1-sol` 的基础 Chat Completions／Responses 及 SSE，详见 [文本接入](/models/gpt-6-1-sol)。视频模型及验收边界分别见 [Seedance](/models/seedance) 和 [Wan](/models/wan)。未列出的模型或扩展能力仍需另行确认，不因文档预留分类而自动可用。
   </Accordion>
   <Accordion title="GPT Image 2.6 和 Gemini 图片也能调用吗？">
     已配置 2.6 的 Flare／Sunburst 和三个 Gemini 图像型号。2.6 按 1K／2K／4K 分档，Gemini 每次仅允许 n=1。具体价格、参数和实测范围见 [2.6](/models/gpt-image-2-6) 与 [Gemini](/models/gemini-image)。
   </Accordion>
   <Accordion title="Wan 视频用哪个接口？">
-    使用 POST /v1/videos 创建，查询和下载路径与 Seedance 相同。支持的三个型号及限制见 [视频模型](/models/video-models)，暂不接受参考视频。付费生成与下载尚待实测。
+    使用 POST /v1/videos 创建，保存任务 ID 后查询状态并下载。支持的三个型号见 [Wan](/models/wan)，完整示例与参数见 [Wan API](/api-reference/wan-videos)，暂不接受参考视频。付费生成与下载尚待实测。
   </Accordion>
   <Accordion title="新增 Claude 和 GPT 型号在哪里查看？">
     当前公开目录共 32 个模型，本次补充 9 个 Claude 和 5 个 GPT 文本型号。完整 ID、接口和验证范围见 [模型目录](/models/overview)。Claude 提供 Messages 和 Chat 两种入口；五个新 GPT 的 Responses 等扩展能力需另行联调。

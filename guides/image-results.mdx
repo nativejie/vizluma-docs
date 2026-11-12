@@ -92,4 +92,4 @@ python3 save_images.py generation.json
 
 异步任务的最终图片响应位于 `result`。先将该对象保存为图片响应 JSON，再交给保存脚本；[异步完整示例](/guides/async-images) 已自动输出 `image-result.json`。不要直接把整个任务对象当成含顶层 `data` 的同步响应。
 
-生产系统应为每次业务建立独立存储目录，关联业务 ID 与任务 ID，限制下载大小和允许的目标地址。图片下载不携带模型 Key；视频内容接口的鉴权规则不同，见 [视频 API](/api-reference/videos)。
+生产系统应为每次业务建立独立存储目录，关联业务 ID 与任务 ID，限制下载大小和允许的目标地址。图片下载不携带模型 Key；视频内容接口的鉴权规则不同，分别见 [Seedance API](/api-reference/seedance-videos) 与 [Wan API](/api-reference/wan-videos)。

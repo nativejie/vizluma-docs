@@ -112,7 +112,8 @@
           {
             "group": "视频",
             "pages": [
-              "models/video-models"
+              "models/seedance",
+              "models/wan"
             ]
           }
         ]
@@ -146,7 +147,8 @@
           {
             "group": "视频接口",
             "pages": [
-              "api-reference/videos"
+              "api-reference/seedance-videos",
+              "api-reference/wan-videos"
             ]
           },
           {

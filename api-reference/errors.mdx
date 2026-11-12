@@ -61,4 +61,4 @@ description: "区分参数、鉴权、限流和结果不确定，保留必要排
 
 异步图片查询即使返回 HTTP `200`，仍需检查 `status`、`response_code` 和 `result.error`。`FAILURE` 是已确认失败，`UNKNOWN` 是结果待确认，两者不可采用相同的自动重建策略。
 
-视频 `failed` 时核对任务错误与最终费用，不循环创建；文本 SSE 在 HTTP 连接建立后仍可能产生错误事件或不完整结束。处理方式见 [异步图片](/api-reference/image-tasks)、[视频](/api-reference/videos) 和 [流式文本](/guides/streaming)。
+视频 `failed` 时核对任务错误与最终费用，不循环创建；文本 SSE 在 HTTP 连接建立后仍可能产生错误事件或不完整结束。处理方式见 [异步图片](/api-reference/image-tasks)、[Seedance](/api-reference/seedance-videos)、[Wan](/api-reference/wan-videos) 和 [流式文本](/guides/streaming)。

@@ -65,7 +65,7 @@ curl --fail-with-body --silent --show-error \
 想先取得任务 ID、稍后查询，见 [异步完整示例](/guides/async-images)。
 
 </Tab>
-<Tab title="视频任务">
+<Tab title="Seedance 视频">
 
 ```bash
 curl --fail-with-body --silent --show-error --max-time 60 \
@@ -76,12 +76,14 @@ curl --fail-with-body --silent --show-error --max-time 60 \
   -o video-task.json
 ```
 
-先保存顶层 `id`。通过 `GET /v1/videos/{id}` 查询，状态为 `completed` 后访问 `GET /v1/videos/{id}/content` 下载。完整流程见 [视频 API](/api-reference/videos)。
+先保存顶层 `id`。通过 `GET /v1/videos/{id}` 查询，状态为 `completed` 后访问 `GET /v1/videos/{id}/content` 下载。完整流程见 [Seedance API](/api-reference/seedance-videos)。
 
 视频配置已启用，付费生成与下载仍待实测；请先小规模验证自己的素材和规格。
 
 </Tab>
 </Tabs>
+
+Wan 接入请从独立的 [Wan 模型](/models/wan) 和 [Wan API](/api-reference/wan-videos) 开始，使用其中的 Wan 请求示例与参数。
 
 ## 3. 检查调用结果
 

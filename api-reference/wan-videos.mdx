@@ -1,0 +1,107 @@
+---
+title: "Wan 视频 API"
+description: "Wan 3.0 的独立调用示例、时长、分辨率、任务查询与下载。"
+---
+
+本页仅介绍 Wan 3.0。视频任务通过 JSON 创建，保存任务 ID 后查询状态，完成后下载 MP4。先配置 [API Key 与地址](/getting-started/authentication)。
+
+## 模型与规格
+
+| 模型 ID | 固定 `resolution` | `duration` |
+| --- | --- | --- |
+| `wan3.0-video-480p` | `480p` | 2～30 秒 |
+| `wan3.0-prime-720p` | `720p` | 2～30 秒 |
+| `wan3.0-prime-1080p` | `1080p` | 2～30 秒 |
+
+时长必须是整数，省略时默认 5 秒。分辨率由模型决定，显式传入 `resolution` 时必须匹配所选模型。价格按秒计算，见 [Wan 价格](/pricing#wan-3-0-视频价格)。
+
+## 第一步：创建任务
+
+每次执行创建请求都会提交一个新视频任务，不要因网络超时无条件重发。
+
+```bash wan-create.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 60 \
+  "${BASE_URL%/}/videos" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"wan3.0-video-480p","prompt":"A cat walking slowly on a sunny beach, gentle waves in the background","duration":5,"ratio":"16:9","resolution":"480p"}' \
+  --output wan-task.json
+cat wan-task.json
+```
+
+将响应的顶层 `id` 与业务编号一起保存。下例为结构示意，ID 为占位值：
+
+```json
+{
+  "id": "video_example",
+  "object": "video",
+  "status": "queued"
+}
+```
+
+创建成功表示任务已提交，不代表已经生成完成。不要使用其他平台返回的任务 ID。
+
+## 第二步：查询状态
+
+将实际 ID 配置为 `WAN_VIDEO_ID`，建议每 30 秒查询一次，始终查询原任务：
+
+```bash wan-status.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+: "${WAN_VIDEO_ID:?请设置创建响应中的 id}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 60 \
+  "${BASE_URL%/}/videos/${WAN_VIDEO_ID}" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}"
+```
+
+| `status` | 处理方式 |
+| --- | --- |
+| `queued` | 等待后查询原任务 |
+| `in_progress` | 继续查询原任务 |
+| `completed` | 下载视频 |
+| `failed` | 停止轮询，保存错误并核对最终费用 |
+
+查询 HTTP `200` 只表示查询成功。查询超时或出现未知状态时，保留任务 ID 核查，不把它当作创建失败自动重发。
+
+## 第三步：下载 MP4
+
+仅在状态为 `completed` 后执行。下载接口仍需同一账户的有效 API Key，及时保存到自己的存储中。
+
+```bash wan-download.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+: "${WAN_VIDEO_ID:?请设置已完成任务的 id}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail --silent --show-error --max-time 600 \
+  "${BASE_URL%/}/videos/${WAN_VIDEO_ID}/content" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  --output wan.mp4
+```
+
+下载失败时优先重试原文件下载，不要重新创建视频。返回文件不保证永久保存，也不要将 API Key 转发到第三方素材地址。
+
+## 参数与素材限制
+
+| 字段 | 说明 |
+| --- | --- |
+| `model` | 必填，使用本页三个完整 ID 之一 |
+| `prompt` | 本页纯文本示例的生成指令 |
+| `duration` | 2～30 的整数，默认 5；不能用 `-1` 自动时长 |
+| `seconds` | 时长别名；与 `duration` 同传时必须一致 |
+| `resolution` | 可省略；传入时必须匹配模型固定规格 |
+| `ratio` | 本页示例为 `16:9`，其他比例需按型号联调 |
+| `reference_images` | 最多 10 项，使用可访问的图片 URL 或 `image_url` 对象 |
+| `reference_audios` | 最多 5 项，使用可访问的音频 URL 或 `audio_url` 对象 |
+| `reference_videos` | 当前不支持参考视频输入 |
+
+本页已给出纯文本创建示例；参考素材的格式、组合和生成效果需按业务实测。不要混入任意 `metadata`、批量参数 `n`、本地路径、Base64 或 multipart 文件上传；未声明或未确认的扩展字段不要自行套用。
+
+## 接入状态与重试
+
+三个 Wan 型号已配置启用，已有本地协议及计费测试；真实付费生成、MP4 下载和素材组合仍待实测。这里的时长是网关校验范围，不保证区间内每一种请求组合都被模型接受。
+
+创建请求没有本文承诺的幂等去重；图片 `Idempotency-Key` 和 `/v1/images/tasks` 不适用于本页视频流程。保留原任务查询结果，按 [错误处理](/api-reference/errors) 与 [超时说明](/guides/timeouts-and-retries) 处理不确定状态。

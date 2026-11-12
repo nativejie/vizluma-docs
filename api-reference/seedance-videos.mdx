@@ -1,0 +1,113 @@
+---
+title: "Seedance 视频 API"
+description: "Seedance 2.0 与 2.5 的创建、查询、下载及素材参数。"
+---
+
+本页仅介绍 Seedance 视频。以下六个按秒模型已配置并启用，使用企业 API Key；普通／VIP 价格见 [计费说明](/pricing)。
+
+| 模型 ID | 固定分辨率 | 网关单次时长上限 |
+| --- | --- | ---: |
+| `seedance-2.0-720p` | 720P | 15秒 |
+| `seedance-2.0-1080p` | 1080P | 15秒 |
+| `seedance-2.0-4k` | 4K | 15秒 |
+| `seedance-2.5-480p` | 480P | 30秒 |
+| `seedance-2.5-720p` | 720P | 30秒 |
+| `seedance-2.5-1080p` | 1080P | 30秒 |
+
+<Warning>
+  已完成配置和本地插件／计费测试，尚未进行付费视频生成及下载实测。上表时长是网关安全上限，不保证上游接受区间内的每个时长或所有素材组合；建议先使用文档中的5秒规格验证。不承诺4K为原生、未经超分的输出。
+</Warning>
+
+视频使用独立的任务协议：**创建后返回任务 ID，由客户端轮询到完成再下载**，不在创建请求里等待完整 MP4。图片默认同步，也支持 [异步生图](/api-reference/image-tasks)，但不能混用视频的路径、状态名或下载接口。不使用 Chat Completions 或 Responses 来创建这六个视频模型。
+
+## 第一步：创建任务
+
+先在服务端设置 `VIZLUMA_API_KEY`。每次执行以下脚本都会创建一个新任务，可能收费；不要因网络超时自动重发。
+
+```bash video-create.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 60 \
+  "${BASE_URL%/}/videos" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"seedance-2.5-480p","prompt":"A cat walking slowly on a sunny beach, gentle waves in the background","duration":5,"ratio":"16:9","resolution":"480p"}' \
+  --output video-task.json
+cat video-task.json
+```
+
+保存响应中的 `id`，后续只使用这个本站任务 ID，不能使用其他平台的 ID。HTTP 状态以实际响应为准；成功响应包含 `object: "video"` 与任务状态。
+
+## 第二步：查询状态
+
+把创建响应的 `id` 设置为服务端环境变量 `VIDEO_ID`，执行以下查询；建议每30秒查询一次，不要循环创建任务。
+
+```bash video-status.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+: "${VIDEO_ID:?请设置创建响应中的 id}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail-with-body --silent --show-error --max-time 60 \
+  "${BASE_URL%/}/videos/${VIDEO_ID}" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}"
+```
+
+- `queued` / `in_progress`：继续查询。
+- `completed`：可以下载。
+- `failed`：停止轮询，核对错误及最终退款记录。
+- 未识别的状态、查询超时或暂时错误：保留任务 ID，核对任务与调用记录，不要把它当成创建失败立即重发。
+
+## 第三步：下载 MP4
+
+仅在任务状态为 `completed` 后执行。结果不保证永久保存，请及时转存到企业自己的存储。
+
+```bash video-download.sh
+set -euo pipefail
+: "${VIZLUMA_API_KEY:?请先设置 VIZLUMA_API_KEY}"
+: "${VIDEO_ID:?请设置已完成任务的 id}"
+BASE_URL="${VIZLUMA_BASE_URL:-https://api.vizluma.online/v1}"
+curl --fail --silent --show-error --max-time 600 \
+  "${BASE_URL%/}/videos/${VIDEO_ID}/content" \
+  -H "Authorization: Bearer ${VIZLUMA_API_KEY}" \
+  --output video.mp4
+```
+
+下载需要同一企业账户的有效 Key；不要把带凭据的请求转发给第三方地址。可按标准 `Range` 请求分段下载；当前尚未进行真实视频的 Range 联调。
+
+## 参数与参考素材
+
+仅接受 JSON。必填 `model`；`prompt` 为文本提示词，提供首帧或参考素材时可以省略。
+
+- `duration`：正整数秒，默认5秒，不能使用 `-1` 自动时长；可使用 `seconds` 作为别名，两者同时传入时必须一致。
+- `ratio`：默认 `16:9`；允许 `16:9`、`9:16`、`1:1`、`4:3`、`3:4`、`21:9`、`adaptive`，最终支持情况以所选模型为准。
+- `resolution`：可省略；传入时必须匹配模型固定分辨率，不能通过这个字段改变计费规格。
+- `first_frame` / `last_frame`：公网 HTTP(S) 图片 URL，或 `{ "image_url": "https://…" }`；尾帧必须同时有首帧。
+- `reference_images`：URL 字符串或 `image_url` 对象组成的数组；2.0最多9张，2.5最多30张。
+- `reference_videos` / `reference_audios`：分别最多10项，可用 URL 字符串，或含 `video_url` / `audio_url` 的对象。音频单段至少1.8秒、总长不超过30秒等媒体约束由上游校验，请先确认具体模型能力。
+- 首尾帧模式不能与任何参考素材数组混用。暂不支持本地文件、Base64、multipart、批量参数 `n` 或任意 `metadata` 透传；未声明字段会被拒绝，避免影响时长与费用。
+
+有模型白名单的企业 Key 需要管理员单独开通对应视频模型；现有 Key 不会因新增渠道自动扩大白名单。
+
+
+
+## 响应结构与状态
+
+创建成功后读取顶层 `id`，查询继续使用同一个 ID。下例为结构示意，省略其他可选字段：
+
+```json
+{
+  "id": "video_example",
+  "object": "video",
+  "status": "queued"
+}
+```
+
+| 视频 `status` | 下一步 |
+| --- | --- |
+| `queued` | 等待后查询原任务 |
+| `in_progress` | 继续查询原任务 |
+| `completed` | 下载 `/v1/videos/{id}/content` |
+| `failed` | 停止轮询，保留错误与任务 ID，核对最终费用 |
+
+查询成功的 HTTP `200` 不等于生成已完成。未知状态应保留原任务并排查，不应自动创建新视频。视频不沿用图片 `Idempotency-Key` 的去重保证，也不使用 `/v1/images/tasks`。
